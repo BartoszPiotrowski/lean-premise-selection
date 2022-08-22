@@ -1,7 +1,7 @@
 import Lake
 open Lake DSL
 
-package leanRandomForest
+package leanPremiseSelection
 
 --require mathlib from git "https://github.com/leanprover-community/mathlib4.git"
 

@@ -21,6 +21,6 @@ elab "suggest_premises_with_scores" : tactic => do
   let m ← addMessageContext m
   let m ← m.toString
   let e := unlabeled m.splitOn
-  let p := score (← trained_forest) e
+  let p := rankingWithScores (← trained_forest) e
   for i in p do
     IO.println i
