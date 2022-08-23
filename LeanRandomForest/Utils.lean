@@ -1,7 +1,7 @@
 import Init.Data.Random
 import Std.Data.HashSet
 import Std.Data.HashMap
-
+import Lean
 section List
 
 variable {α} [Inhabited α]
@@ -214,3 +214,51 @@ def String.joinWith (l : List String) (c : String) : String :=
 def List.mapParallel {α β} (f : α → β) (l : List α) :=
   let spawn := l.map (fun e => (Task.spawn fun _ => f e))
   spawn.map Task.get
+
+variable {m} [Monad m] [MonadLiftT MetaM m] [MonadControlT MetaM m]
+open Lean Meta
+
+def visitLambda (f : Expr → m Unit) (e : Expr) : m Unit := visit #[] e
+  where visit (fvars : Array Expr) : Expr → m Unit
+    | Expr.lam n d b c => do
+      f <| d.instantiateRev fvars
+      withLocalDecl n c d fun x =>
+        visit (fvars.push x) b
+    | e => do
+      f <| e.instantiateRev fvars
+
+def visitForall (f : Expr → m Unit) (e : Expr) : m Unit := visit #[] e
+  where visit (fvars : Array Expr) : Expr → m Unit
+    | Expr.forallE n d b c => do
+      f <| d.instantiateRev fvars
+      withLocalDecl n c d fun x =>
+        visit (fvars.push x) b
+    | e => do
+      f <| e.instantiateRev fvars
+
+def visitLet (f : Expr → m Unit) (e : Expr) : m Unit := visit #[] e
+  where visit (fvars : Array Expr) : Expr → m Unit
+    | Expr.letE n d v b _ => do
+      f <| d.instantiateRev fvars
+      f <| v.instantiateRev fvars
+      withLetDecl n d v fun x =>
+        visit (fvars.push x) b
+    | e => do
+      f <| e.instantiateRev fvars
+
+def visitExpr (f : Expr → m Unit) (e : Expr) : m Unit :=
+  match e with
+  | Expr.lam .. => visitLambda f e
+  | Expr.forallE .. => visitForall f e
+  | Expr.letE .. => visitLet f e
+  | Expr.app .. => e.withApp (fun fn args => f fn *> args.forM f)
+  | Expr.mdata _ b => visitExpr f b
+  | Expr.proj _ _ b => f b
+  | _ => return ()
+
+/-- Variant of `Lean.Meta.forEachExpr'` but works over arbitrary m. -/
+partial def forEachExpr' (f : Expr → m Bool) (e : Expr) : m Unit := do
+  if ← f e then visitExpr (forEachExpr' f) e
+
+def forEachExpr (f : Expr → m Unit) (e : Expr) : m Unit :=
+  forEachExpr' (fun e => f e *> pure true) e

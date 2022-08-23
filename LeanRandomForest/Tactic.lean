@@ -1,5 +1,6 @@
 import Lean
 import LeanRandomForest.Forest
+import LeanRandomForest.StatementFeatures
 
 open Lean Meta Elab Tactic Term
 
@@ -14,6 +15,12 @@ elab "suggest_premises" : tactic => do
   let p := ranking (← trained_forest) e
   for i in p do
     IO.println i
+
+elab "print_smt_features" : tactic => do
+  let t ← getMainTarget
+  let features ← getStatementFeatures t
+  for (⟨n1, n2⟩, count) in features.bigramCounts do
+    dbg_trace (s!"{n1}/{n2}", count)
 
 elab "suggest_premises_with_scores" : tactic => do
   let g ← getMainGoal

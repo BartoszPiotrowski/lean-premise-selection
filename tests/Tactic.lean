@@ -1,6 +1,7 @@
 import LeanRandomForest.Tactic
 
 example (a b c : Nat) : a + 0 = a := by {
+  print_smt_features
   suggest_premises
   apply rfl
 }
