@@ -1,5 +1,5 @@
 import Std.Data.HashMap
-import LeanRandomForest.Utils
+import PremiseSelection.Utils
 
 open Std
 

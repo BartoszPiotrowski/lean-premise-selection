@@ -1,6 +1,6 @@
 import Lean
-import LeanRandomForest.Writer
-import LeanRandomForest.Utils
+import PremiseSelection.Writer
+import PremiseSelection.Utils
 open Lean
 /-!
 

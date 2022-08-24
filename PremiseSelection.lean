@@ -1,2 +1,2 @@
-import LeanRandomForest.Forest
-import LeanRandomForest.Tactic
+import PremiseSelection.Forest
+import PremiseSelection.Tactic

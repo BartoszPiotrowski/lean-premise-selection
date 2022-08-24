@@ -1,6 +1,6 @@
 import Std.Data.HashMap
-import LeanRandomForest.Utils
-import LeanRandomForest.Data
+import PremiseSelection.Utils
+import PremiseSelection.Data
 
 abbrev SplitRule := String
 

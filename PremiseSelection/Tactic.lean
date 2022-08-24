@@ -1,6 +1,6 @@
 import Lean
-import LeanRandomForest.Forest
-import LeanRandomForest.StatementFeatures
+import PremiseSelection.Forest
+import PremiseSelection.StatementFeatures
 
 open Lean Meta Elab Tactic Term
 

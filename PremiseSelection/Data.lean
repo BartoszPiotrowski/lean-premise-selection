@@ -1,5 +1,5 @@
-import LeanRandomForest.Utils
-import LeanRandomForest.Impurity
+import PremiseSelection.Utils
+import PremiseSelection.Impurity
 import Std.Data.HashSet
 
 open Std List
@@ -69,16 +69,6 @@ def randomLabel (es : List Example) : IO Label := do
     match e.label with
     | [] => panic! "unlabeled example"
     | l => return l
-
---def uniformLabels (e : List Example) : Bool :=
---  let labels := labels e
---  let rec uniform inds :=
---    match inds with
---    | []            => True
---    | [_]           => True
---    | h1 :: h2 :: t =>
---      if h1 = h2 then uniform (h2 :: t) else False
---  uniform labels
 
 def unionOfLabels (examples : Examples) : Label :=
   union (examples.map Example.label)

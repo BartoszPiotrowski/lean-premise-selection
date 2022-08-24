@@ -1,6 +1,6 @@
-import LeanRandomForest.Utils
-import LeanRandomForest.Data
-import LeanRandomForest.Tree
+import PremiseSelection.Utils
+import PremiseSelection.Data
+import PremiseSelection.Tree
 import Std.Data.HashMap
 
 def Forest.add (min_impur : Float) (n_trees : Nat) (part : Float) (forest : List Tree) (e : Example)
