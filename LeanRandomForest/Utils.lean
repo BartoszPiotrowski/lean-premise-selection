@@ -109,17 +109,17 @@ def initSegAndTail {α} (l : List α) (n : Nat) :=
         | h :: t => if n = 0 then (acc.reverse, h :: t) else aux (h :: acc) (n-1) t
     aux [] n l
 
-def append_unordered (l₁ : List α) (l₂ : List α) :=
+def appendUnordered (l₁ : List α) (l₂ : List α) :=
   match l₂ with
   | [] => l₁
-  | h :: t => h :: (append_unordered l₁ t)
+  | h :: t => h :: (appendUnordered l₁ t)
 
 -- TODO is it optimal?
-def flatten_unordered (l : List (List β)) : List β :=
+def flattenUnordered (l : List (List β)) : List β :=
   let rec aux acc rest :=
     match rest with
     | [] => acc
-    | h :: t => aux (append_unordered acc h) t
+    | h :: t => aux (appendUnordered acc h) t
   aux [] l
 
 end List
@@ -175,6 +175,11 @@ def HashSet.ofList (l : List β) :=
 
 def HashSet.insertMany (s : HashSet β) (l : List β) :=
   List.foldl HashSet.insert s l
+
+def intersection (l₁ l₂ : List β) : List β :=
+  let s₁ := HashSet.ofList l₁
+  let s := l₂.foldl (fun s x => if s₁.contains x then s.insert x else s) HashSet.empty
+  s.toList
 
 def union (l : List (List β)) : List β :=
   (l.foldl HashSet.insertMany HashSet.empty).toList
