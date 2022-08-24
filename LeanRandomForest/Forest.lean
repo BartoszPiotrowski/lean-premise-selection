@@ -14,9 +14,8 @@ def Forest.add (min_impur : Float) (n_trees : Nat) (part : Float) (forest : List
   let forest := updated_trees.append trees_rest
   if add_tree then return leaf e :: forest else return forest
 
-
-def forest (examples : List Example) : IO (List Tree) := do
-  let add f e := Forest.add 0.5 100 0.2 f e
+def forest (n_trees : Nat) (examples : List Example) : IO (List Tree) := do
+  let add f e := Forest.add 0.5 n_trees 0.2 f e
   let iters := 1
   let mut forest := []
   for _ in List.range iters do
@@ -25,9 +24,9 @@ def forest (examples : List Example) : IO (List Tree) := do
   return forest
 
 def vote (votes : List Label) :=
-  let votes := votes.flatten_unordered
+  let votes := votes.flattenUnordered
   let freqs := freqs votes
-  List.sort (fun (_, c1) (_, c2) => c1 > c2) freqs
+  List.sort (fun (_, x) (_, y) => x > y) freqs
 
 def rankingWithScores (forest : List Tree) (e : Example) :=
   let votes := forest.map (Tree.classify e)

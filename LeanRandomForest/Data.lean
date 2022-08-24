@@ -18,18 +18,17 @@ open Direction
 
 def loadFeatures (path : String) : IO (List (List String)) := do
   let lines ← readLines path
-  let readLine l := l.splitOn " "
-  return List.map readLine lines
+  return lines.map String.splitOn
+
+-- TODO more general instead of Strings?
+def loadLabels (path : String) : IO (List (List String)) := do
+  let lines ← readLines path
+  return lines.map String.splitOn
 
 def saveLabels (labels : List Label) (path : String) : IO Unit:=
   let labelsAsStrings := List.map (fun x => String.joinWith x " ") labels
   let labelsAsString := String.joinWith labelsAsStrings "\n"
   IO.FS.writeFile path (labelsAsString ++ "\n")
-
--- TODO more general instead of Strings?
-def loadLabels (path : String) : IO (List (List String)) := do
-  let lines ← readLines path
-  return (lines.map String.splitOn)
 
 def labels examples :=
     List.map Example.label examples
@@ -96,15 +95,14 @@ def split (fea : String) (examples : List Example) : (List Example × List Examp
     | [] => (examples_l, examples_r)
     | h :: t =>
       match (rule h) with
-      | Left => loop examples_l (h :: examples_r) t
-      | Right  => loop (h :: examples_l) examples_r t
+      | Left  => loop (h :: examples_l) examples_r t
+      | Right => loop examples_l (h :: examples_r) t
   loop [] [] examples
 
-@[inline]
 def add (es : List Example) (e : Example) :=
     e :: es
 
-def splitImpur (impur : List String → Float) fea examples :=
+def splitImpurGini fea examples :=
     let rule := ruleOfFea fea
     let append left_right e :=
       let (left, right) := left_right
@@ -117,19 +115,30 @@ def splitImpur (impur : List String → Float) fea examples :=
     let e := Float.ofInt (List.length examples)
     let fl := Float.sqrt (el / e)
     let fr := Float.sqrt (er / e)
-    ((impur (union left)) * fl + (impur (union right)) * fr)
+    ((giniImpur (List.flattenUnordered left)) * fl +
+    (giniImpur (List.flattenUnordered right)) * fr)
 
-def giniRule (examples : List Example) : (IO String) := do
+def splitImpurInter fea examples :=
+    let (left, right) := split fea examples
+    let left_labels := left.map Example.label
+    let right_labels := right.map Example.label
+    let (left_union, right_union) := (union left_labels, union right_labels)
+    let i := intersection left_union right_union
+    i.length + ((right_union.length ^ 2) + (left_union.length ^ 2)) / i.length
+
+def optimizedRule (examples : List Example) : (IO String) := do
   let n := examples.length
-  let m := Int.toNat (Float.toInt (Float.sqrt (Float.ofNat n)))
-  let random_feas ← randomFeatures examples m
-  let impur_from_fea f := splitImpur giniImpur f examples
+  let random_feas ← randomFeatures examples n
+  let impur_from_fea f := splitImpurInter f examples
   let impurs := List.map impur_from_fea random_feas
   let impurs_feas := List.zip impurs random_feas
-  let compare := fun (x1, _) (y1, _) => x1 < y1
+  let compare := fun (x, _) (y, _) => x < y
   let impurs_feas := List.sort compare impurs_feas
   let (_, best_fea) := List.head! impurs_feas
   return best_fea
+
+def randomRule (examples : List Example) : (IO String) := do
+  randomFeature examples
 
 variable {α} [BEq α] [Hashable α]
 
