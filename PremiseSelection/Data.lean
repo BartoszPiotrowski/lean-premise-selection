@@ -1,6 +1,4 @@
 import PremiseSelection.Utils
-import PremiseSelection.Impurity
-import Std.Data.HashSet
 
 open Std List
 
@@ -20,7 +18,6 @@ def loadFeatures (path : String) : IO (List (List String)) := do
   let lines ← readLines path
   return lines.map String.splitOn
 
--- TODO more general instead of Strings?
 def loadLabels (path : String) : IO (List (List String)) := do
   let lines ← readLines path
   return lines.map String.splitOn
@@ -78,6 +75,18 @@ def ruleOfFea (f : String) (e : Example) :=
   | true => Left
   | false => Right
 
+variable {α} [BEq α] [Hashable α]
+
+def giniImpur (l : List α) : Float :=
+  let len := l.length
+  let update (tbl : HashMap α Int) i :=
+    if tbl.contains i then tbl.insert i (tbl.find! i + 1)
+    else tbl.insert i 1
+  let tbl := List.foldl (fun tbl i => update tbl i) HashMap.empty l
+  let update :=
+    fun s _ x => s + Float.pow ((Float.ofInt x) / (Float.ofNat len)) 2
+  1 - HashMap.fold update 0 tbl
+
 def split (fea : String) (examples : List Example) : (List Example × List Example) :=
   let rule := ruleOfFea fea
   let rec loop examples_l examples_r l :=
@@ -88,9 +97,6 @@ def split (fea : String) (examples : List Example) : (List Example × List Examp
       | Left  => loop (h :: examples_l) examples_r t
       | Right => loop examples_l (h :: examples_r) t
   loop [] [] examples
-
-def add (es : List Example) (e : Example) :=
-    e :: es
 
 def splitImpurGini fea examples :=
     let rule := ruleOfFea fea
@@ -129,8 +135,6 @@ def optimizedRule (examples : List Example) : (IO String) := do
 
 def randomRule (examples : List Example) : (IO String) := do
   randomFeature examples
-
-variable {α} [BEq α] [Hashable α]
 
 def cover (n : Nat) (ranking : List α) (true : List α) :=
   let n := min ranking.length (true.length + n)

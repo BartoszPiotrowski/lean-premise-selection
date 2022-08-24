@@ -1,5 +1,3 @@
-import Std.Data.HashMap
-import PremiseSelection.Utils
 import PremiseSelection.Data
 
 abbrev SplitRule := String
@@ -25,11 +23,8 @@ def makeNewNode (examples : List Example) : IO Tree := do
   if examples_l.isEmpty || examples_r.isEmpty
   then return Leaf ((← examples.chooseRandom).label, examples)
   else return Node (rule,
-    --Leaf ([], examples_l), -- hide premises from the leftmost (the most "negative") leaf
     Leaf (unionOfLabels examples_l, examples_l),
     Leaf (unionOfLabels examples_r, examples_r))
-    --Leaf ((← examples_l.chooseRandom).label, examples_l),
-    --Leaf ((← examples_r.chooseRandom).label, examples_r))
 
 --def initCond (min_impur : Float) (examples : List Example) : Bool :=
 --  let labels := labels examples
@@ -88,7 +83,6 @@ partial def fromStringAux (l : List String) :=
       let (right_tree, rest_r) := fromStringAux rest_l
       (Node (h, left_tree, right_tree), rest_r)
   | [] => (Leaf ([], []), [])
-  --decreasing_by { sorry }
 
 def Tree.fromString (string : String) : Tree :=
   let (tree, rest) := fromStringAux (string.splitOn " ")

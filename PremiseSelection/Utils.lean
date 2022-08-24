@@ -40,7 +40,6 @@ def sampleWithReplace (l : List α) (n : Nat) : IO (List α) :=
     | k + 1 => do loop k $ a.get! (← IO.rand 0 (a.size - 1)) :: r
   loop n []
 
-
 def evalList {α} (l : List (IO α)) : IO (List α) := do
   let mut ll := []
   for x in l do
@@ -159,12 +158,6 @@ def floatOfString (s : String) : Float :=
   let S := Float.ofInt S.toInt!
   let s := Float.ofInt s.toInt!
   (Float.ofInt sign) * (S + (s / 10 ^ length_s))
-
-def remove_last (l : List α) : (List α) :=
-  match l with
-  | [] => []
-  | [h] => []
-  | h :: t => h :: (remove_last t)
 
 open Std
 

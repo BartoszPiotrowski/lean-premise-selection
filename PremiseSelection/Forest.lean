@@ -1,7 +1,4 @@
-import PremiseSelection.Utils
-import PremiseSelection.Data
 import PremiseSelection.Tree
-import Std.Data.HashMap
 
 def Forest.add (min_impur : Float) (n_trees : Nat) (part : Float) (forest : List Tree) (e : Example)
     : IO (List Tree) := do
@@ -16,9 +13,9 @@ def Forest.add (min_impur : Float) (n_trees : Nat) (part : Float) (forest : List
 
 def forest (n_trees : Nat) (examples : List Example) : IO (List Tree) := do
   let add f e := Forest.add 0.5 n_trees 0.2 f e
-  let iters := 1
+  let passes := 1
   let mut forest := []
-  for _ in List.range iters do
+  for _ in List.range passes do
     for e in examples do
       forest ← add forest e
   return forest
@@ -32,14 +29,11 @@ def rankingWithScores (forest : List Tree) (e : Example) :=
   let votes := forest.map (Tree.classify e)
   vote votes
 
+-- parallel version of the above
 --def rankingWithScores (forest : List Tree) (e : Example) :=
 --  let tasks := forest.map (fun t => (Task.spawn fun _ => (Tree.classify e t)))
 --  let votes := tasks.map Task.get
 --  vote votes
-
-def classify forest e :=
-  let scores := rankingWithScores forest e
-  scores.head!.fst
 
 def ranking forest e :=
   let scores := rankingWithScores forest e
