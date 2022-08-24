@@ -18,7 +18,18 @@ elab "suggest_premises" : tactic => do
 
 elab "print_smt_features" : tactic => do
   let t ← getMainTarget
-  let features ← getStatementFeatures t
+  let hyps_features ← withMainContext (do
+    let ctx ← getLCtx
+    let mut features : StatementFeatures := ∅
+    for h in ctx do
+      let p ← inferType h.type
+      if p.isProp then
+        let fs ← getStatementFeatures h.type
+        features := features ++ fs
+    return features
+  )
+  let target_features ← getStatementFeatures t
+  let features := hyps_features ++ target_features
   for (⟨n1, n2⟩, count) in features.bigramCounts do
     dbg_trace (s!"{n1}/{n2}", count)
 
