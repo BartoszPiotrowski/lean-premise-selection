@@ -149,3 +149,12 @@ def Tree.maxSizeOfLeavesL (t : Tree) :=
 
 def Tree.minSizeOfLeavesL (t : Tree) :=
   minList (t.sizesOfLeavesL.map Float.ofNat)
+
+def Tree.avgSizeOfLeavesLdivE (t : Tree) :=
+  average t.sizesOfLeavesLdivE
+
+def Tree.maxSizeOfLeavesLdivE (t : Tree) :=
+  maxList t.sizesOfLeavesLdivE
+
+def Tree.minSizeOfLeavesLdivE (t : Tree) :=
+  minList t.sizesOfLeavesLdivE

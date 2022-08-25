@@ -18,7 +18,7 @@ def main (args : List String) : IO Unit := do
   let test_data ← loadLabeled test_features test_labels
   IO.println s!"Training random forest..."
   let f ← forest n_trees passes part m train_data
-  IO.println "Stats about the forest:"
+  IO.println "\nStats about the forest:"
   IO.println (stats f)
   IO.println s!"Saving forest..."
   saveToFile f forest_save_path

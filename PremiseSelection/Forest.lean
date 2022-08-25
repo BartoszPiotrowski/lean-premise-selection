@@ -58,10 +58,15 @@ def stats (forest : List Tree) : String :=
   let avg_avg_node_L := average (forest.map Tree.avgSizeOfLeavesL)
   let avg_max_node_L := average (forest.map Tree.maxSizeOfLeavesL)
   let avg_min_node_L := average (forest.map Tree.minSizeOfLeavesL)
-  s!"Average depth of a tree: {avg_depth}\n" ++
+  let avg_avg_node_LdivE := average (forest.map Tree.avgSizeOfLeavesLdivE)
+  let avg_max_node_LdivE := average (forest.map Tree.maxSizeOfLeavesLdivE)
+  let avg_min_node_LdivE := average (forest.map Tree.minSizeOfLeavesLdivE)
+  s!"Average depth of a tree:       {avg_depth}\n" ++
   s!"Average n. of nodes in a tree: {avg_n_nodes}\n" ++
-  s!"Average balance of a tree: {avg_balance}\n" ++
-  s!"Average n. of labels per leaf,
+  s!"Average balance of a tree:     {avg_balance}\n" ++
+  s!"Labels per leaf,
     min: {avg_min_node_L}, max: {avg_max_node_L}, avg {avg_avg_node_L}\n" ++
-  s!"Average n. of examples per leaf,
+  s!"Examples per leaf,
+    min: {avg_min_node_E}, max: {avg_max_node_E}, avg {avg_avg_node_E}\n" ++
+  s!"(Labels / Examples) per leaf,
     min: {avg_min_node_E}, max: {avg_max_node_E}, avg {avg_avg_node_E}\n"
