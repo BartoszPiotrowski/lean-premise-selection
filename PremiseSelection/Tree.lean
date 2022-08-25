@@ -26,20 +26,20 @@ def makeNewNode (examples : List Example) : IO Tree := do
     Leaf (unionOfLabels examples_l, examples_l),
     Leaf (unionOfLabels examples_r, examples_r))
 
---def initCond (min_impur : Float) (examples : List Example) : Bool :=
+--def initCond (m : Float) (examples : List Example) : Bool :=
 --  let labels := labels examples
 --  let labels := List.flattenUnordered labels
 --  let impur := giniImpur labels
---  impur > min_impur
+--  impur > m
 
-def initCond (_ : Float) (examples : List Example) : Bool :=
+def initCond (m : Float) (examples : List Example) : Bool :=
   let labels := examples.map (fun x => x.label)
   let union_size := Float.ofNat (union labels).length
   let avg_size := average (labels.map (fun x => Float.ofNat (List.length x)))
   --let n := Float.ofNat labels.length
-  (union_size / avg_size) > 2
+  (union_size / avg_size) > m
 
-def Tree.add (min_impur : Float) (tree : Tree) (e : Example) : IO Tree := do
+def Tree.add (m : Float) (tree : Tree) (e : Example) : IO Tree := do
   let rec loop t := match t with
     | Node (fea, tree_l, tree_r) =>
       match (ruleOfFea fea) e with
@@ -47,7 +47,7 @@ def Tree.add (min_impur : Float) (tree : Tree) (e : Example) : IO Tree := do
       | Right => do return Node (fea, tree_l, ← loop tree_r)
     | Leaf (label, examples) =>
       let examples := e :: examples
-      if initCond min_impur examples
+      if initCond m examples
       then makeNewNode examples
       else return Leaf (label, examples)
   loop tree

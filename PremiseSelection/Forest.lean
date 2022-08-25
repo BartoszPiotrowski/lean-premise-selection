@@ -1,19 +1,19 @@
 import PremiseSelection.Tree
 
-def Forest.add (min_impur : Float) (n_trees : Nat) (part : Float) (forest : List Tree) (e : Example)
-    : IO (List Tree) := do
+def Forest.add (m : Float) (n_trees : Nat) (part : Float) (forest : List Tree)
+    (e : Example) : IO (List Tree) := do
   let add_tree := forest.length < n_trees
-  let k := Int.toNat (Float.toInt (part * Float.ofInt forest.length))
+  let add tree := Tree.add m tree e
+  let k := (part * Float.ofInt forest.length).toInt.toNat
   let k := min forest.length (max 1 k)
   let (trees_to_update, trees_rest) ← randomSplit forest k
-  let updated_trees ← evalList
-    (trees_to_update.map (fun tree => Tree.add min_impur tree e))
+  let updated_trees ← evalList (trees_to_update.map add)
   let forest := updated_trees.append trees_rest
   if add_tree then return leaf e :: forest else return forest
 
-def forest (n_trees : Nat) (examples : List Example) : IO (List Tree) := do
-  let add f e := Forest.add 0.5 n_trees 0.2 f e
-  let passes := 1
+def forest (n_trees : Nat) (passes : Nat) (part : Float) (m : Float)
+    (examples : List Example) : IO (List Tree) := do
+  let add f e := Forest.add m n_trees part f e
   let mut forest := []
   for _ in List.range passes do
     for e in examples do
