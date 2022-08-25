@@ -20,11 +20,13 @@ def main (args : List String) : IO Unit := do
   let my_forest ← forest n_trees passes part m train_data
   let avg_depth := average (my_forest.map (fun t => Float.ofNat t.depth))
   let avg_n_nodes := average (my_forest.map (fun t => Float.ofNat t.n_nodes))
+  let avg_balance := average (my_forest.map Tree.balance)
   IO.println s!"Saving forest..."
   saveToFile my_forest forest_save_path
   IO.println s!"Forest saved at {forest_save_path}"
   IO.println s!"Average depth of a tree: {avg_depth}"
   IO.println s!"Average n. of nodes in a tree: {avg_n_nodes}"
+  IO.println s!"Average balance of a tree: {avg_n_nodes}"
   IO.println s!"Classifying test data..."
   let pred_test_labels := List.mapParallel (ranking my_forest) test_data
   IO.println s!"Saving predictions..."

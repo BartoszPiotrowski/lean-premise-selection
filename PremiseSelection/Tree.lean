@@ -99,6 +99,11 @@ def Tree.n_nodes (t : Tree) : Nat :=
   | Leaf _ => 1
   | Node (_, t_left, t_right) => 1 + (Tree.n_nodes t_left) + (Tree.n_nodes t_right)
 
+def Tree.balance (t : Tree) : Float :=
+  let d := Float.ofNat t.depth
+  let n := Float.ofNat t.n_nodes
+  (Float.log2 n) / d
+
 def Tree.sizesOfLeavesE (t : Tree) : List Nat :=
   let s := match t with
   | Leaf (_, es) => [es.length]
