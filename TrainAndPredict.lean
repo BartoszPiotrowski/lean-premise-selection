@@ -26,7 +26,7 @@ def main (args : List String) : IO Unit := do
   IO.println s!"Forest saved at {forest_save_path}"
   IO.println s!"Average depth of a tree: {avg_depth}"
   IO.println s!"Average n. of nodes in a tree: {avg_n_nodes}"
-  IO.println s!"Average balance of a tree: {avg_n_nodes}"
+  IO.println s!"Average balance of a tree: {avg_balance}"
   IO.println s!"Classifying test data..."
   let pred_test_labels := List.mapParallel (ranking my_forest) test_data
   IO.println s!"Saving predictions..."
