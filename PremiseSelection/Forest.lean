@@ -69,4 +69,4 @@ def stats (forest : List Tree) : String :=
   s!"Examples per leaf,
     min: {avg_min_node_E}, max: {avg_max_node_E}, avg {avg_avg_node_E}\n" ++
   s!"(Labels / Examples) per leaf,
-    min: {avg_min_node_E}, max: {avg_max_node_E}, avg {avg_avg_node_E}\n"
+    min: {avg_min_node_LdivE}, max: {avg_max_node_LdivE}, avg {avg_avg_node_LdivE}\n"
