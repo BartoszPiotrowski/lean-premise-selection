@@ -47,3 +47,21 @@ def saveToFile (forest : List Tree) (path : String) : IO Unit:=
 def loadFromFile (path : String): IO (List Tree) := do
   let lines ← readLines path
   return lines.map Tree.fromString
+
+def stats (forest : List Tree) : String :=
+  let avg_depth := average (forest.map (fun t => Float.ofNat t.depth))
+  let avg_n_nodes := average (forest.map (fun t => Float.ofNat t.n_nodes))
+  let avg_balance := average (forest.map Tree.balance)
+  let avg_avg_node_E := average (forest.map Tree.avgSizeOfLeavesE)
+  let avg_max_node_E := average (forest.map Tree.maxSizeOfLeavesE)
+  let avg_min_node_E := average (forest.map Tree.minSizeOfLeavesE)
+  let avg_avg_node_L := average (forest.map Tree.avgSizeOfLeavesL)
+  let avg_max_node_L := average (forest.map Tree.maxSizeOfLeavesL)
+  let avg_min_node_L := average (forest.map Tree.minSizeOfLeavesL)
+  s!"Average depth of a tree: {avg_depth}" ++
+  s!"Average n. of nodes in a tree: {avg_n_nodes}" ++
+  s!"Average balance of a tree: {avg_balance}" ++
+  s!"Average n. of labels per leaf,
+    min: {avg_min_node_L}, max: {avg_max_node_L}, avg {avg_avg_node_L}" ++
+  s!"Average n. of examples per leaf,
+    min: {avg_min_node_E}, max: {avg_max_node_E}, avg {avg_avg_node_E}"

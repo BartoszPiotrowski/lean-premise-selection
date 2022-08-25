@@ -9,7 +9,7 @@ def main (args : List String) : IO Unit := do
   let forest_save_path := args.get!      5
   let n_trees := args.get!               6
   let n_trees := n_trees.toInt!.toNat
-  -- hypherparameters
+  -- hyperparameters
   let passes := 1
   let part := 0.2
   let m := 2.0
@@ -17,18 +17,14 @@ def main (args : List String) : IO Unit := do
   let train_data ← loadLabeled train_features train_labels
   let test_data ← loadLabeled test_features test_labels
   IO.println s!"Training random forest..."
-  let my_forest ← forest n_trees passes part m train_data
-  let avg_depth := average (my_forest.map (fun t => Float.ofNat t.depth))
-  let avg_n_nodes := average (my_forest.map (fun t => Float.ofNat t.n_nodes))
-  let avg_balance := average (my_forest.map Tree.balance)
+  let f ← forest n_trees passes part m train_data
+  IO.println "Stats about the forest:"
+  IO.println (stats f)
   IO.println s!"Saving forest..."
-  saveToFile my_forest forest_save_path
+  saveToFile f forest_save_path
   IO.println s!"Forest saved at {forest_save_path}"
-  IO.println s!"Average depth of a tree: {avg_depth}"
-  IO.println s!"Average n. of nodes in a tree: {avg_n_nodes}"
-  IO.println s!"Average balance of a tree: {avg_balance}"
   IO.println s!"Classifying test data..."
-  let pred_test_labels := List.mapParallel (ranking my_forest) test_data
+  let pred_test_labels := test_data.mapParallel (ranking f)
   IO.println s!"Saving predictions..."
   saveLabels pred_test_labels test_preds_save_path
   IO.println s!"Predictions saved at {test_preds_save_path}"

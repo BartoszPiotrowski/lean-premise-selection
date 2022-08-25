@@ -131,3 +131,21 @@ def Tree.sizesOfLeavesL_E (t : Tree) :=
   | Node (_, t_left, t_right) =>
     (Tree.sizesOfLeavesL_E t_left) ++ (Tree.sizesOfLeavesL_E t_right)
   s.sort (fun (x, _) (y, _) => x > y)
+
+def Tree.avgSizeOfLeavesE (t : Tree) :=
+  average (t.sizesOfLeavesE.map Float.ofNat)
+
+def Tree.maxSizeOfLeavesE (t : Tree) :=
+  maxList (t.sizesOfLeavesE.map Float.ofNat)
+
+def Tree.minSizeOfLeavesE (t : Tree) :=
+  minList (t.sizesOfLeavesE.map Float.ofNat)
+
+def Tree.avgSizeOfLeavesL (t : Tree) :=
+  average (t.sizesOfLeavesL.map Float.ofNat)
+
+def Tree.maxSizeOfLeavesL (t : Tree) :=
+  maxList (t.sizesOfLeavesL.map Float.ofNat)
+
+def Tree.minSizeOfLeavesL (t : Tree) :=
+  minList (t.sizesOfLeavesL.map Float.ofNat)
