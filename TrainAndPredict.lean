@@ -8,11 +8,16 @@ def main (args : List String) : IO Unit := do
   let test_preds_save_path := args.get!  4
   let forest_save_path := args.get!      5
   let n_trees := args.get!               6
+  let n_trees := n_trees.toInt!.toNat
+  -- hypherparameters
+  let passes := 1
+  let part := 0.2
+  let m := 2.0
   IO.println s!"Loading data..."
   let train_data ← loadLabeled train_features train_labels
   let test_data ← loadLabeled test_features test_labels
   IO.println s!"Training random forest..."
-  let my_forest ← forest (String.toInt! n_trees).toNat train_data
+  let my_forest ← forest n_trees passes part m train_data
   let avg_depth := average (my_forest.map (fun t => Float.ofNat t.depth))
   let avg_n_nodes := average (my_forest.map (fun t => Float.ofNat t.n_nodes))
   IO.println s!"Saving forest..."
