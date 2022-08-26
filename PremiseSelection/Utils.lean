@@ -169,6 +169,9 @@ def HashSet.ofList (l : List β) :=
 def HashSet.insertMany (s : HashSet β) (l : List β) :=
   List.foldl HashSet.insert s l
 
+def HashSet.intersection (s₁ s₂ : HashSet β) : HashSet β :=
+  s₁.fold (fun s x => if s₂.contains x then s.insert x else s) HashSet.empty
+
 def intersection (l₁ l₂ : List β) : List β :=
   let s₁ := HashSet.ofList l₁
   let s := l₂.foldl (fun s x => if s₁.contains x then s.insert x else s) HashSet.empty
@@ -193,8 +196,7 @@ def freqs (l : List β) :=
   let update (tbl : HashMap β Int) (i : β) :=
     if tbl.contains i then tbl.insert i (tbl.find! i + 1)
     else tbl.insert i 1
-  let tbl := List.foldl (fun tbl i => update tbl i) HashMap.empty l
-  tbl.toList
+  List.foldl (fun tbl i => update tbl i) HashMap.empty l
 
 def unionFreqs (l : List (List β)) :=
   let update (tbl : HashMap β Int) (i : β) :=
@@ -202,7 +204,7 @@ def unionFreqs (l : List (List β)) :=
     else tbl.insert i 1
   let updateMany (tbl : HashMap β Int) (l : List β) :=
     l.foldl update tbl
-  (l.foldl updateMany HashMap.empty).toList
+  (l.foldl updateMany HashMap.empty)
 
 def String.joinWith (l : List String) (c : String) : String :=
   match l with

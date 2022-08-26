@@ -22,7 +22,7 @@ def forest (n_trees : Nat) (passes : Nat) (part : Float) (m : Float)
 
 def vote (votes : List Label) :=
   let votes := votes.flattenUnordered
-  let freqs := freqs votes
+  let freqs := (freqs votes).toList
   List.sort (fun (_, x) (_, y) => x > y) freqs
 
 def rankingWithScores (forest : List Tree) (e : Example) :=
