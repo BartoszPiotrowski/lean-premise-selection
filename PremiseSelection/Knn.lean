@@ -14,7 +14,7 @@ def similarity (fCounts : HashMap String Int) (nTheorems : Nat) (f1 f2 : Feature
   let f2 := f2.toList.map count_trans
   let fI := fI.toList.map count_trans
   let (s1, s2, sI) := (sum f1, sum f2, sum fI)
-  let s := (sI / s1 + s2 - sI)
+  let s := (sI / (s1 + s2 - sI))
   dbg_trace s
   s
 
