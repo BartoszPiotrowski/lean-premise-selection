@@ -28,10 +28,10 @@ def predictOne (data : List Example) (nNeighbours : Nat) (f : Features) : List S
   let addMany tbl s_ps := let (s, ps) := s_ps; ps.foldl (add s) tbl
   let premisesScores := simils.foldl addMany HashMap.empty
   let ranking := premisesScores.toList.sort (fun (_, x) (_, y) => x > y)
+  dbg_trace ranking
   ranking.map (fun (x, _) => x)
 
 def predict (trainData testData : List Example) (nNeighbours : Nat) :=
   let testData := testData.map Example.features
   let predictOne := predictOne trainData nNeighbours
   testData.mapParallel predictOne
-
