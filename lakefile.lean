@@ -13,3 +13,6 @@ lean_exe TrainAndPredict
 
 @[defaultTarget]
 lean_exe LoadAndPredict
+
+@[defaultTarget]
+lean_exe KnnPredict
