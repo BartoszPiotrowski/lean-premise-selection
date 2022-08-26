@@ -14,7 +14,9 @@ def similarity (fCounts : HashMap String Int) (nTheorems : Nat) (f1 f2 : Feature
   let f2 := f2.toList.map count_trans
   let fI := fI.toList.map count_trans
   let (s1, s2, sI) := (sum f1, sum f2, sum fI)
-  (sI / s1 + s2 - sI)
+  let s := (sI / s1 + s2 - sI)
+  dbg_trace s
+  s
 
 def predictOne (data : List Example) (nNeighbours : Nat) (f : Features) : List String :=
   let allFeatures := (data.map (fun e => e.features.toList)).flattenUnordered
@@ -28,7 +30,6 @@ def predictOne (data : List Example) (nNeighbours : Nat) (f : Features) : List S
   let addMany tbl s_ps := let (s, ps) := s_ps; ps.foldl (add s) tbl
   let premisesScores := simils.foldl addMany HashMap.empty
   let ranking := premisesScores.toList.sort (fun (_, x) (_, y) => x > y)
-  dbg_trace ranking
   ranking.map (fun (x, _) => x)
 
 def predict (trainData testData : List Example) (nNeighbours : Nat) :=
