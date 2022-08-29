@@ -12,12 +12,13 @@ def main (args : List String) : IO Unit := do
   -- hyperparameters
   let passes := 1
   let part := 0.2
-  let m := 2.0
+  let initThreshold := 2.0
+  let optimLevel := 1.0
   IO.println s!"Loading data..."
   let train_data ← loadLabeled train_features train_labels
   let test_data ← loadLabeled test_features test_labels
   IO.println s!"Training random forest..."
-  let f ← forest n_trees passes part m train_data
+  let f ← forest passes n_trees part initThreshold optimLevel train_data
   IO.println "\nStats about the forest:"
   IO.println (stats f)
   IO.println s!"Saving forest..."

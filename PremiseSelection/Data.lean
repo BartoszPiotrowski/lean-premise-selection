@@ -120,8 +120,8 @@ def splitImpurInter fea examples :=
     let i := intersection leftUnion rightUnion
     i.length + ((rightUnion.length ^ 2) + (leftUnion.length ^ 2)) / i.length
 
-def optimizedRule (examples : List Example) : (IO String) := do
-  let n := examples.length
+def optimizedRule (optimLevel : Float) (examples : List Example) : (IO String) := do
+  let n := (max 1 (optimLevel * Float.ofNat examples.length)).toInt.toNat
   let randomFeas ← randomFeatures examples n
   let impurFromFea f := splitImpurInter f examples
   let impurs := List.map impurFromFea randomFeas

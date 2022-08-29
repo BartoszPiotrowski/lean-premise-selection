@@ -1,9 +1,9 @@
 import PremiseSelection.Tree
 
-def Forest.add (m : Float) (nTrees : Nat) (part : Float) (forest : List Tree)
-    (e : Example) : IO (List Tree) := do
+def Forest.add (nTrees : Nat) (part initThreshold optimLevel : Float)
+    (forest : List Tree) (e : Example) : IO (List Tree) := do
   let addTree := forest.length < nTrees
-  let add tree := Tree.add m tree e
+  let add tree := Tree.add initThreshold optimLevel tree e
   let k := (part * Float.ofInt forest.length).toInt.toNat
   let k := min forest.length (max 1 k)
   let (treesToUpdate, treesRest) ← randomSplit forest k
@@ -11,9 +11,9 @@ def Forest.add (m : Float) (nTrees : Nat) (part : Float) (forest : List Tree)
   let forest := updatedTrees.append treesRest
   if addTree then return leaf e :: forest else return forest
 
-def forest (nTrees : Nat) (passes : Nat) (part : Float) (m : Float)
+def forest (passes nTrees : Nat) (part initThreshold optimLevel : Float)
     (examples : List Example) : IO (List Tree) := do
-  let add f e := Forest.add m nTrees part f e
+  let add := Forest.add nTrees part initThreshold optimLevel
   let mut forest := []
   for _ in List.range passes do
     for e in examples do
@@ -28,12 +28,6 @@ def vote (votes : List Label) :=
 def rankingWithScores (forest : List Tree) (e : Example) :=
   let votes := forest.map (Tree.classify e)
   vote votes
-
--- parallel version of the above
---def rankingWithScores (forest : List Tree) (e : Example) :=
---  let tasks := forest.map (fun t => (Task.spawn fun _ => (Tree.classify e t)))
---  let votes := tasks.map Task.get
---  vote votes
 
 def ranking forest e :=
   let scores := rankingWithScores forest e
@@ -64,9 +58,6 @@ def stats (forest : List Tree) : String :=
   s!"Average depth of a tree:       {avgDepth}\n" ++
   s!"Average n. of nodes in a tree: {avgNNodes}\n" ++
   s!"Average balance of a tree:     {avgBalance}\n" ++
-  s!"Labels per leaf,
-    min: {avgMinNodeL}, max: {avgMaxNodeL}, avg {avgAvgNodeL}\n" ++
-  s!"Examples per leaf,
-    min: {avgMinNodeE}, max: {avgMaxNodeE}, avg {avgAvgNodeE}\n" ++
-  s!"(Labels / Examples) per leaf,
-    min: {avgMinNodeLdivE}, max: {avgMaxNodeLdivE}, avg {avgAvgNodeLdivE}\n"
+  s!"Labels per leaf, min: {avgMinNodeL}, max: {avgMaxNodeL}, avg {avgAvgNodeL}\n" ++
+  s!"Examples per leaf, min: {avgMinNodeE}, max: {avgMaxNodeE}, avg {avgAvgNodeE}\n" ++
+  s!"(Labels / Examples) per leaf, min: {avgMinNodeLdivE}, max: {avgMaxNodeLdivE}, avg {avgAvgNodeLdivE}\n"

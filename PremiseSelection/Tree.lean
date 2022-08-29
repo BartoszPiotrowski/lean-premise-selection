@@ -16,9 +16,9 @@ open Direction
 def leaf (e : Example) :=
   Leaf (e.label, [e])
 
-def makeNewNode (examples : List Example) : IO Tree := do
-  --let rule ← randomRule examples
-  let rule ← optimizedRule examples
+def makeNewNode (optimLevel : Float) (examples : List Example) : IO Tree := do
+  let rule ← if optimLevel ≤ 0 then randomRule examples
+    else optimizedRule optimLevel examples
   let (examplesL, examplesR) := split rule examples
   if examplesL.isEmpty || examplesR.isEmpty
   then return Leaf ((← examples.chooseRandom).label, examples)
@@ -26,20 +26,14 @@ def makeNewNode (examples : List Example) : IO Tree := do
     Leaf (unionOfLabels examplesL, examplesL),
     Leaf (unionOfLabels examplesR, examplesR))
 
---def initCond (m : Float) (examples : List Example) : Bool :=
---  let labels := labels examples
---  let labels := List.flattenUnordered labels
---  let impur := giniImpur labels
---  impur > m
-
-def initCond (m : Float) (examples : List Example) : Bool :=
+def initCond (initThreshold : Float) (examples : List Example) : Bool :=
   let labels := examples.map (fun x => x.label)
   let unionSize := Float.ofNat (union labels).length
-  let avgSize := average (labels.map (fun x => Float.ofNat (List.length x)))
-  --let n := Float.ofNat labels.length
-  (unionSize / avgSize) > m
+  let avgSize := average (labels.map (fun x => Float.ofNat x.length))
+  (unionSize / avgSize) > initThreshold
 
-def Tree.add (m : Float) (tree : Tree) (e : Example) : IO Tree := do
+def Tree.add (initThreshold : Float) (optimLevel : Float)
+    (tree : Tree) (e : Example) : IO Tree := do
   let rec loop t := match t with
     | Node (fea, treeL, treeR) =>
       match (ruleOfFea fea) e with
@@ -47,8 +41,8 @@ def Tree.add (m : Float) (tree : Tree) (e : Example) : IO Tree := do
       | Right => do return Node (fea, treeL, ← loop treeR)
     | Leaf (label, examples) =>
       let examples := e :: examples
-      if initCond m examples
-      then makeNewNode examples
+      if initCond initThreshold examples
+      then makeNewNode optimLevel examples
       else return Leaf (label, examples)
   loop tree
 
