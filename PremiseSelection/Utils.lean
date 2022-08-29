@@ -53,18 +53,18 @@ def insert (compare : α → α → Bool) (x : α) (l : List α) : (List α) :=
   | [] => [x]
   | h :: t => if compare x h then x :: h :: t else h :: insert compare x t
 
-def insert_sort (compare : α → α → Bool) (l : List α) : (List α) :=
+def insertSort (compare : α → α → Bool) (l : List α) : (List α) :=
   let rec loop : List α → List α → List α
     | acc, [] => acc
     | acc, h :: t => loop (insert compare h acc) t
   loop [] l
 
 def split {α} (l : List α) :=
-  let rec split_aux l left right :=
+  let rec splitAux l left right :=
     match l with
     | [] => (left, right)
-    | h :: t => split_aux t right (h :: left)
-  split_aux l [] []
+    | h :: t => splitAux t right (h :: left)
+  splitAux l [] []
 
 partial def merge {α} (compare : α → α → Bool) (l1 l2 : List α) :=
   match (l1, l2) with
@@ -74,15 +74,15 @@ partial def merge {α} (compare : α → α → Bool) (l1 l2 : List α) :=
     if compare h1 h2 then h1 :: merge compare t1 l2
     else                  h2 :: merge compare t2 l1
 
-partial def merge_sort {α} (compare : α → α → Bool) (l : List α) :=
+partial def mergeSort {α} (compare : α → α → Bool) (l : List α) :=
   match l with
   | [] => l
   | [_] => l
   | _ =>
     let (l1, l2) := split l
-    merge compare (merge_sort compare l1) (merge_sort compare l2)
+    merge compare (mergeSort compare l1) (mergeSort compare l2)
 
-abbrev sort {α} : (α → α → Bool) → (List α) → (List α) := merge_sort
+abbrev sort {α} : (α → α → Bool) → (List α) → (List α) := mergeSort
 
 def sample (l : List α) (n : Nat) : IO (List α) :=
   if l.length < n then panic! "List shorter than n" else do
@@ -154,10 +154,10 @@ def floatOfString (s : String) : Float :=
     else (s, 1)
   let a := Array.mk (s.splitOn ".")
   let (S, s) := (a[0]!,a[1]!)
-  let length_s := Float.ofInt s.length
+  let l := Float.ofInt s.length
   let S := Float.ofInt S.toInt!
   let s := Float.ofInt s.toInt!
-  (Float.ofInt sign) * (S + (s / 10 ^ length_s))
+  (Float.ofInt sign) * (S + (s / 10 ^ l))
 
 open Std
 

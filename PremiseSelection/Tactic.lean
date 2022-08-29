@@ -4,7 +4,7 @@ import PremiseSelection.StatementFeatures
 
 open Lean Meta Elab Tactic Term
 
-def trained_forest := loadFromFile "data/forest1"
+def trainedForest := loadFromFile "data/forest1"
 
 elab "suggest_premises" : tactic => do
   let g ← getMainGoal
@@ -12,7 +12,7 @@ elab "suggest_premises" : tactic => do
   let m ← addMessageContext m
   let m ← m.toString
   let e := unlabeled m.splitOn
-  let p := ranking (← trained_forest) e
+  let p := ranking (← trainedForest) e
   for i in p do
     IO.println i
 
@@ -39,6 +39,6 @@ elab "suggest_premises_with_scores" : tactic => do
   let m ← addMessageContext m
   let m ← m.toString
   let e := unlabeled m.splitOn
-  let p := rankingWithScores (← trained_forest) e
+  let p := rankingWithScores (← trainedForest) e
   for i in p do
     IO.println i
