@@ -40,8 +40,14 @@ instance : ToString PremisesData where
   toString tp := Json.pretty (toJson tp)
 
 private def getTheoremFromName (n : Name) : MetaM (List Name) := do 
-  pure [n]
+  -- NOTE: Option 1. Get all consts.
+  --pure [n]
+  -- NOTE: Option 2. Get all theorems.
   --if let ConstantInfo.thmInfo _ := (← getEnv).find? n then pure [n] else pure []
+  -- NOTE: Option 3. Get all consts that are Props.
+  if let some cinfo := (← getEnv).find? n then
+    if (← inferType cinfo.type).isProp then pure [n] else pure []
+  else pure []
 
 private def getTheoremFromExpr (e : Expr) : MetaM (List Name) := do
   if let .const n _ := e then getTheoremFromName n else pure []
@@ -58,17 +64,18 @@ def extractPremises (e : Expr) : MetaM (List Name) := do
 the proof and constructs an object of type `PremisesData` with all-/
 def extractPremisesFromConstantInfo : ConstantInfo → MetaM (Option PremisesData)
   | ConstantInfo.thmInfo { name := n, type := ty, value := v, .. } => do
-    let (args, _, thm) ← forallMetaTelescope ty 
-    let thmFeats ← getStatementFeatures thm
-    let mut argsFeats := []
-    for arg in args do
-      let arg ← inferType arg 
-      let argType ← inferType arg 
-      dbg_trace s!"{arg} +++ {argType}"
-      if argType.isProp then
-        let argFeats ← getStatementFeatures arg 
-        argsFeats := argsFeats ++ [argFeats]
-    pure $ PremisesData.mk n thmFeats argsFeats (← extractPremises v)
+    forallTelescope ty $ fun args thm => do
+      let thmFeats ← getStatementFeatures thm
+      let mut argsFeats := []
+      for arg in args do
+        let arg ← inferType arg 
+        let argType ← inferType arg 
+        dbg_trace s!"{arg} +++ {argType}"
+        if argType.isProp then
+          let argFeats ← getStatementFeatures arg 
+          if ¬ argFeats.bigramCounts.isEmpty then 
+            argsFeats := argsFeats ++ [argFeats]
+      pure $ PremisesData.mk n thmFeats argsFeats (← extractPremises v)
   | _ => pure none
 
 /- Same as `extractPremisesFromConstantInfo` but take an idenitfier and gets 
@@ -78,16 +85,14 @@ def extractPremisesFromId (id : Name) : MetaM (Option PremisesData) := do
   | some cinfo => extractPremisesFromConstantInfo cinfo
   | none => pure none
 
-/- Same as `extractPremisesFromId` but takes syntax and first finds all the 
-identifiers. -/
+section Commands 
+
+/- Extract and print premises from a single theorem. -/
 def extractPremisesFromSyntax (stx : Syntax) : MetaM Unit := do
   let ns ← resolveGlobalConst stx
   for n in ns do 
-    match ← extractPremisesFromId n with 
-    | some tp => dbg_trace s!"{tp}"
-    | none => continue
-
-section Commands 
+    if let some data ← extractPremisesFromId n then
+      dbg_trace s!"{data}"
 
 syntax (name := extract_premises_thm) "extract_premises_thm " term : command
 
@@ -97,13 +102,12 @@ def elabExtractPremisesThm : CommandElab
     liftTermElabM <| liftM <| extractPremisesFromSyntax id
   | _ => throwUnsupportedSyntax
 
-/- Extract premises from all the theorems in the context. -/
+/- Extract and print premises from all the theorems in the context. -/
 def extractPremisesCtx : MetaM Unit := do 
     let cs := (← getEnv).constants.toList
     for (_, cinfo) in cs do 
-      match ← extractPremisesFromConstantInfo cinfo with 
-      | some tp => dbg_trace s!"{tp}"
-      | none => continue
+      if let some data ← extractPremisesFromConstantInfo cinfo then
+        dbg_trace s!"{data}"
 
 syntax (name := extract_premises_ctx) "extract_premises_ctx" : command
 
@@ -113,7 +117,7 @@ def elabExtractPremisesCtx : CommandElab
     liftTermElabM <| liftM <| extractPremisesCtx
   | _ => throwUnsupportedSyntax
 
-/- Extract premises from all the theorems in the imports. -/
+/- Extract and print premises from all the theorems in the imports. -/
 def extractPremisesImports : MetaM Unit := do 
   let env ← getEnv
   let imports := env.imports.map (·.module)
@@ -123,9 +127,8 @@ def extractPremisesImports : MetaM Unit := do
     if imports.contains n ∧ n != `Init ∧ n != `Extractor then 
       dbg_trace s!"Module {n}"
       for cinfo in d.constants do 
-        match ← extractPremisesFromConstantInfo cinfo with 
-        | some tp => dbg_trace s!"{tp}"
-        | none => continue 
+        if let some data ← extractPremisesFromConstantInfo cinfo then 
+          dbg_trace s!"{data}"
 
 syntax (name := extract_premises_imports) "extract_premises_imports" : command
 
