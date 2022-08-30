@@ -31,8 +31,8 @@ instance : ToJson PremisesData where
       Json.arr $ (Array.mk data.premises.eraseDup).map (Json.str ∘ toString)
     Json.mkObj [
       ("theoremName", nameJson),
-      ("theoremFeature", thmFeatJson),
-      ("argumentsFeatuters", argsFeatJson),
+      ("theoremFeatures", thmFeatJson),
+      ("argumentsFeatures", argsFeatJson),
       ("premises", premisesJson)
     ]
 
