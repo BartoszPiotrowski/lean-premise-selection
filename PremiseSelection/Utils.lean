@@ -7,6 +7,7 @@ section List
 
 variable {α} [Inhabited α]
 
+
 def minList [LE α] [DecidableRel (@LE.le α _)] : List α → α
   | []         => panic! "Empty list"
   | l@(h :: _) => l.foldl min h
@@ -202,6 +203,21 @@ def String.joinWith (l : List String) (c : String) : String :=
   match l with
   | h :: t => h ++ t.foldl (fun r s => r ++ c ++ s) ""
   | [] => ""
+
+partial def zipMemSaveAux {α β} (acc : List (α × β)) (l₁ : List α) (l₂ : List β) :=
+  match (l₁, l₂) with
+  | ([], _) => List.reverse acc
+  | (_, []) => List.reverse acc
+  | (h₁ :: t₁, h₂ :: t₂) => zipMemSaveAux ((h₁, h₂) :: acc) t₁ t₂
+
+def List.zipMemSave {α β} (l₁ : List α) (l₂ : List β) : List (α × β) :=
+  zipMemSaveAux [] l₁ l₂
+
+def List.mapMemSave {α β} (f : α → β) (l : List α) :=
+  let rec loop acc := fun
+    | [] => List.reverse acc
+    | x :: xs => loop (f x :: acc) xs
+  loop [] l
 
 def List.mapParallel {α β} (f : α → β) (l : List α) :=
   let spawn := l.map (fun e => (Task.spawn fun _ => f e))

@@ -20,11 +20,7 @@ inductive Direction : Type
 
 open Direction
 
-def loadFeatures (path : String) : IO (List (List String)) := do
-  let lines ← readLines path
-  return lines.map String.splitOn
-
-def loadLabels (path : String) : IO (List (List String)) := do
+def load (path : String) : IO (List (List String)) := do
   let lines ← readLines path
   return lines.map String.splitOn
 
@@ -43,11 +39,11 @@ def labeled (features : List String) (label : List String) : Example :=
     ⟨(HashSet.ofList features), label⟩
 
 def loadLabeled (features : String) (labels : String) : IO (List Example) := do
-  let features ← loadFeatures features
-  let labels ← loadLabels labels
-  let featuresLabels := List.zip features labels
+  let features ← load features
+  let labels ← load labels
+  let featuresLabels := List.zipMemSave features labels
   let labeled := fun (f, l) => labeled f l
-  return List.map labeled featuresLabels
+  return featuresLabels.map labeled
 
 def randomFeature (examples : List Example) : IO String := do
     let randomExample_1 := (← chooseRandom examples).features
