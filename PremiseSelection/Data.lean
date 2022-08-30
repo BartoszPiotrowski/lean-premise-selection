@@ -15,12 +15,8 @@ inductive Direction : Type
 open Direction
 
 def load (path : String) : IO (List (List String)) := do
-  dbg_trace "hello 1"
   let lines ← readLines path
-  dbg_trace "hello 2"
-  let a := lines.map String.splitOn
-  dbg_trace "hello 3"
-  return a
+  return lines.map String.splitOn
 
 def saveLabels (labels : List Label) (path : String) : IO Unit:=
   let labelsAsStrings := List.map (fun x => String.joinWith x " ") labels
@@ -39,8 +35,11 @@ def labeled (features : List String) (label : List String) : Example :=
 def loadLabeled (features : String) (labels : String) : IO (List Example) := do
   let features ← load features
   let labels ← load labels
+  dbg_trace "hello 1"
   let featuresLabels := List.zip features labels
+  dbg_trace "hello 2"
   let labeled := fun (f, l) => labeled f l
+  dbg_trace "hello 3"
   return List.map labeled featuresLabels
 
 def randomFeature (examples : List Example) : IO String := do
