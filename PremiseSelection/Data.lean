@@ -15,8 +15,12 @@ inductive Direction : Type
 open Direction
 
 def loadFeatures (path : String) : IO (List (List String)) := do
+  dbg_trace "hello 1"
   let lines ← readLines path
-  return lines.mapMemSave String.splitOn
+  dbg_trace "hello 2"
+  let a := lines.mapMemSave String.splitOn
+  dbg_trace "hello 3"
+  return a
 
 def loadLabels (path : String) : IO (List (List String)) := do
   let lines ← readLines path
