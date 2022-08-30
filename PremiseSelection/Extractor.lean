@@ -52,9 +52,8 @@ private def getTheoremFromName (n : Name) : MetaM (List Name) := do
 private def getTheoremFromExpr (e : Expr) : MetaM (List Name) := do
   if let .const n _ := e then getTheoremFromName n else pure []
 
-private def visitPremise (e : Expr) : WriterT (List Name) MetaM Unit  := do
-  tell <| ← getTheoremFromExpr e
-  return ()
+private def visitPremise (e : Expr) : WriterT (List Name) MetaM Unit := do
+  getTheoremFromExpr e >>= tell
 
 def extractPremises (e : Expr) : MetaM (List Name) := do 
   let ((), premises) ← WriterT.run <| forEachExpr visitPremise e
