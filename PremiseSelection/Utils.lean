@@ -1,7 +1,8 @@
+import Lean
 import Init.Data.Random
 import Std.Data.HashSet
 import Std.Data.HashMap
-import Lean
+
 section List
 
 variable {α} [Inhabited α]
@@ -48,41 +49,32 @@ def evalList {α} (l : List (IO α)) : IO (List α) := do
 
 namespace List
 
-def insert (compare : α → α → Bool) (x : α) (l : List α) : (List α) :=
-  match l with
-  | [] => [x]
-  | h :: t => if compare x h then x :: h :: t else h :: insert compare x t
-
-def insertSort (compare : α → α → Bool) (l : List α) : (List α) :=
-  let rec loop : List α → List α → List α
-    | acc, [] => acc
-    | acc, h :: t => loop (insert compare h acc) t
-  loop [] l
-
-def split {α} (l : List α) :=
+def split' {α} (l : List α) :=
   let rec splitAux l left right :=
     match l with
     | [] => (left, right)
     | h :: t => splitAux t right (h :: left)
   splitAux l [] []
 
-partial def merge {α} (compare : α → α → Bool) (l1 l2 : List α) :=
+-- NOTE: Renamed because it was already defined in mathbin.
+partial def merge' {α} (compare : α → α → Bool) (l1 l2 : List α) :=
   match (l1, l2) with
   | ([], l) => l
   | (l, []) => l
   | (h1 :: t1, h2 :: t2) =>
-    if compare h1 h2 then h1 :: merge compare t1 l2
-    else                  h2 :: merge compare t2 l1
+    if compare h1 h2 then h1 :: merge' compare t1 l2
+    else                  h2 :: merge' compare t2 l1
 
-partial def mergeSort {α} (compare : α → α → Bool) (l : List α) :=
+-- NOTE: Renamed because it was already defined in mathbin.
+partial def mergeSort' {α} (compare : α → α → Bool) (l : List α) :=
   match l with
   | [] => l
   | [_] => l
   | _ =>
-    let (l1, l2) := split l
-    merge compare (mergeSort compare l1) (mergeSort compare l2)
+    let (l1, l2) := split' l
+    merge' compare (mergeSort' compare l1) (mergeSort' compare l2)
 
-abbrev sort {α} : (α → α → Bool) → (List α) → (List α) := mergeSort
+abbrev sort {α} : (α → α → Bool) → (List α) → (List α) := mergeSort'
 
 def sample (l : List α) (n : Nat) : IO (List α) :=
   if l.length < n then panic! "List shorter than n" else do
@@ -113,7 +105,7 @@ def appendUnordered (l₁ : List α) (l₂ : List α) :=
   | [] => l₁
   | h :: t => h :: (appendUnordered l₁ t)
 
--- TODO is it optimal?
+-- TODO: is it optimal?
 def flattenUnordered (l : List (List β)) : List β :=
   let rec aux acc rest :=
     match rest with
