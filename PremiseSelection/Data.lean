@@ -18,7 +18,7 @@ def load (path : String) : IO (List (List String)) := do
   dbg_trace "hello 1"
   let lines ← readLines path
   dbg_trace "hello 2"
-  let a := lines.mapMemSave String.splitOn
+  let a := lines.map String.splitOn
   dbg_trace "hello 3"
   return a
 
