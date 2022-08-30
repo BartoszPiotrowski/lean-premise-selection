@@ -16,11 +16,11 @@ open Direction
 
 def loadFeatures (path : String) : IO (List (List String)) := do
   let lines ← readLines path
-  return lines.map String.splitOn
+  return lines.mapMemSave String.splitOn
 
 def loadLabels (path : String) : IO (List (List String)) := do
   let lines ← readLines path
-  return lines.map String.splitOn
+  return lines.mapMemSave String.splitOn
 
 def saveLabels (labels : List Label) (path : String) : IO Unit:=
   let labelsAsStrings := List.map (fun x => String.joinWith x " ") labels
