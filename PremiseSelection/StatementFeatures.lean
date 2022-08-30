@@ -1,6 +1,6 @@
 import Lean
-import LeanRandomForest.Writer
-import LeanRandomForest.Utils
+import PremiseSelection.Writer
+import PremiseSelection.Utils
 open Lean
 /-!
 
@@ -64,22 +64,26 @@ def StatementFeatures.mkName : Name → StatementFeatures
 def StatementFeatures.mkBigram : Name → Name → StatementFeatures
   | n1, n2 => {bigramCounts := Multiset.singleton ⟨n1, n2⟩}
 
-def getHeadName? (e : Expr) : Option Name :=
-  match e.getAppFn with
-  | .const n _ => some n
-  | _ => none
+def immediateName (e : Expr) : Option Name :=
+  if let .const n _ := e then
+    some n
+  else if let some n := e.natLit? then
+    some <| toString n
+  else
+    none
+
+def getHeadName? (e : Expr) : Option Name := do
+  immediateName <| e.getAppFn
 
 def visitFeature (e : Expr) : WriterT StatementFeatures MetaM Unit  := do
-  if let .const n _ := e then
+  if let some n := immediateName e then
     tell <| StatementFeatures.mkName n
   if e.isApp then
-    e.withApp (fun f args =>
-      match f with
-      | .const n1 _ => do
+    e.withApp (fun f args => do
+      if let some n1 := immediateName f then
         for arg in args do
           if let some n2 := getHeadName? arg then
             tell <| StatementFeatures.mkBigram n1 n2
-      | _ => pure ()
     )
   return ()
 

@@ -1,4 +1,4 @@
-import LeanRandomForest
+import PremiseSelection
 
 def main (args : List String) : IO Unit := do
   let forest := args.get!                0

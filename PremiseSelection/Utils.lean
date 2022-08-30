@@ -40,7 +40,6 @@ def sampleWithReplace (l : List α) (n : Nat) : IO (List α) :=
     | k + 1 => do loop k $ a.get! (← IO.rand 0 (a.size - 1)) :: r
   loop n []
 
-
 def evalList {α} (l : List (IO α)) : IO (List α) := do
   let mut ll := []
   for x in l do
@@ -54,18 +53,18 @@ def insert (compare : α → α → Bool) (x : α) (l : List α) : (List α) :=
   | [] => [x]
   | h :: t => if compare x h then x :: h :: t else h :: insert compare x t
 
-def insert_sort (compare : α → α → Bool) (l : List α) : (List α) :=
+def insertSort (compare : α → α → Bool) (l : List α) : (List α) :=
   let rec loop : List α → List α → List α
     | acc, [] => acc
     | acc, h :: t => loop (insert compare h acc) t
   loop [] l
 
 def split {α} (l : List α) :=
-  let rec split_aux l left right :=
+  let rec splitAux l left right :=
     match l with
     | [] => (left, right)
-    | h :: t => split_aux t right (h :: left)
-  split_aux l [] []
+    | h :: t => splitAux t right (h :: left)
+  splitAux l [] []
 
 partial def merge {α} (compare : α → α → Bool) (l1 l2 : List α) :=
   match (l1, l2) with
@@ -75,15 +74,15 @@ partial def merge {α} (compare : α → α → Bool) (l1 l2 : List α) :=
     if compare h1 h2 then h1 :: merge compare t1 l2
     else                  h2 :: merge compare t2 l1
 
-partial def merge_sort {α} (compare : α → α → Bool) (l : List α) :=
+partial def mergeSort {α} (compare : α → α → Bool) (l : List α) :=
   match l with
   | [] => l
   | [_] => l
   | _ =>
     let (l1, l2) := split l
-    merge compare (merge_sort compare l1) (merge_sort compare l2)
+    merge compare (mergeSort compare l1) (mergeSort compare l2)
 
-abbrev sort {α} : (α → α → Bool) → (List α) → (List α) := merge_sort
+abbrev sort {α} : (α → α → Bool) → (List α) → (List α) := mergeSort
 
 def sample (l : List α) (n : Nat) : IO (List α) :=
   if l.length < n then panic! "List shorter than n" else do
@@ -109,17 +108,17 @@ def initSegAndTail {α} (l : List α) (n : Nat) :=
         | h :: t => if n = 0 then (acc.reverse, h :: t) else aux (h :: acc) (n-1) t
     aux [] n l
 
-def append_unordered (l₁ : List α) (l₂ : List α) :=
+def appendUnordered (l₁ : List α) (l₂ : List α) :=
   match l₂ with
   | [] => l₁
-  | h :: t => h :: (append_unordered l₁ t)
+  | h :: t => h :: (appendUnordered l₁ t)
 
 -- TODO is it optimal?
-def flatten_unordered (l : List (List β)) : List β :=
+def flattenUnordered (l : List (List β)) : List β :=
   let rec aux acc rest :=
     match rest with
     | [] => acc
-    | h :: t => aux (append_unordered acc h) t
+    | h :: t => aux (appendUnordered acc h) t
   aux [] l
 
 end List
@@ -155,16 +154,10 @@ def floatOfString (s : String) : Float :=
     else (s, 1)
   let a := Array.mk (s.splitOn ".")
   let (S, s) := (a[0]!,a[1]!)
-  let length_s := Float.ofInt s.length
+  let l := Float.ofInt s.length
   let S := Float.ofInt S.toInt!
   let s := Float.ofInt s.toInt!
-  (Float.ofInt sign) * (S + (s / 10 ^ length_s))
-
-def remove_last (l : List α) : (List α) :=
-  match l with
-  | [] => []
-  | [h] => []
-  | h :: t => h :: (remove_last t)
+  (Float.ofInt sign) * (S + (s / 10 ^ l))
 
 open Std
 
@@ -175,6 +168,14 @@ def HashSet.ofList (l : List β) :=
 
 def HashSet.insertMany (s : HashSet β) (l : List β) :=
   List.foldl HashSet.insert s l
+
+def HashSet.intersection (s₁ s₂ : HashSet β) : HashSet β :=
+  s₁.fold (fun s x => if s₂.contains x then s.insert x else s) HashSet.empty
+
+def intersection (l₁ l₂ : List β) : List β :=
+  let s₁ := HashSet.ofList l₁
+  let s := l₂.foldl (fun s x => if s₁.contains x then s.insert x else s) HashSet.empty
+  s.toList
 
 def union (l : List (List β)) : List β :=
   (l.foldl HashSet.insertMany HashSet.empty).toList
@@ -195,8 +196,7 @@ def freqs (l : List β) :=
   let update (tbl : HashMap β Int) (i : β) :=
     if tbl.contains i then tbl.insert i (tbl.find! i + 1)
     else tbl.insert i 1
-  let tbl := List.foldl (fun tbl i => update tbl i) HashMap.empty l
-  tbl.toList
+  List.foldl (fun tbl i => update tbl i) HashMap.empty l
 
 def unionFreqs (l : List (List β)) :=
   let update (tbl : HashMap β Int) (i : β) :=
@@ -204,7 +204,7 @@ def unionFreqs (l : List (List β)) :=
     else tbl.insert i 1
   let updateMany (tbl : HashMap β Int) (l : List β) :=
     l.foldl update tbl
-  (l.foldl updateMany HashMap.empty).toList
+  (l.foldl updateMany HashMap.empty)
 
 def String.joinWith (l : List String) (c : String) : String :=
   match l with
@@ -221,6 +221,7 @@ open Lean Meta
 def visitLambda (f : Expr → m Unit) (e : Expr) : m Unit := visit #[] e
   where visit (fvars : Array Expr) : Expr → m Unit
     | Expr.lam n d b c => do
+      let d := d.instantiateRev fvars
       f <| d.instantiateRev fvars
       withLocalDecl n c d fun x =>
         visit (fvars.push x) b
@@ -230,7 +231,8 @@ def visitLambda (f : Expr → m Unit) (e : Expr) : m Unit := visit #[] e
 def visitForall (f : Expr → m Unit) (e : Expr) : m Unit := visit #[] e
   where visit (fvars : Array Expr) : Expr → m Unit
     | Expr.forallE n d b c => do
-      f <| d.instantiateRev fvars
+      let d := d.instantiateRev fvars
+      f d
       withLocalDecl n c d fun x =>
         visit (fvars.push x) b
     | e => do
@@ -239,8 +241,10 @@ def visitForall (f : Expr → m Unit) (e : Expr) : m Unit := visit #[] e
 def visitLet (f : Expr → m Unit) (e : Expr) : m Unit := visit #[] e
   where visit (fvars : Array Expr) : Expr → m Unit
     | Expr.letE n d v b _ => do
-      f <| d.instantiateRev fvars
-      f <| v.instantiateRev fvars
+      let d := d.instantiateRev fvars
+      let v := v.instantiateRev fvars
+      f d
+      f v
       withLetDecl n d v fun x =>
         visit (fvars.push x) b
     | e => do
