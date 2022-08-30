@@ -35,12 +35,9 @@ def labeled (features : List String) (label : List String) : Example :=
 def loadLabeled (features : String) (labels : String) : IO (List Example) := do
   let features ← load features
   let labels ← load labels
-  dbg_trace "hello 1"
   let featuresLabels := List.zipMemSave features labels
-  dbg_trace "hello 2"
   let labeled := fun (f, l) => labeled f l
-  dbg_trace "hello 3"
-  return List.map labeled featuresLabels
+  return featuresLabels.map labeled
 
 def randomFeature (examples : List Example) : IO String := do
     let randomExample_1 := (← chooseRandom examples).features
