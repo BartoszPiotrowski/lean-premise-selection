@@ -139,7 +139,10 @@ end List
 def readLines (path : String) : IO (List String) := do
   let handle ← IO.FS.Handle.mk path IO.FS.Mode.read
   let content ← handle.readToEnd
-  return content.trim.splitOn "\n"
+  dbg_trace "hello 1"
+  let a := content.trim.splitOn "\n"
+  dbg_trace "hello 2"
+  return a
 
 def time (f : α → β) (x : α) : IO β := do
   timeit "Execution time: " (return f x)
