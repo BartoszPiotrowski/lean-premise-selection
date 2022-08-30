@@ -70,7 +70,6 @@ def extractPremisesFromConstantInfo : ConstantInfo → MetaM (Option PremisesDat
       for arg in args do
         let arg ← inferType arg 
         let argType ← inferType arg 
-        dbg_trace s!"{arg} +++ {argType}"
         if argType.isProp then
           let argFeats ← getStatementFeatures arg 
           if ¬ argFeats.bigramCounts.isEmpty then 
