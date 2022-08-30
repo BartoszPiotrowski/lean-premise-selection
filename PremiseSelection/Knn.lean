@@ -1,6 +1,5 @@
 import PremiseSelection.Utils
 import PremiseSelection.Data
-import Std.Data.HashMap
 
 open Std
 

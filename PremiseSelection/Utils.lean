@@ -1,6 +1,6 @@
 import Init.Data.Random
-import Std.Data.HashSet
-import Std.Data.HashMap
+import Bootstrap.Data.HashSet
+import Bootstrap.Data.HashMap
 import Lean
 section List
 
@@ -217,38 +217,6 @@ def List.mapParallel {α β} (f : α → β) (l : List α) :=
 
 variable {m} [Monad m] [MonadLiftT MetaM m] [MonadControlT MetaM m]
 open Lean Meta
-
-def visitLambda (f : Expr → m Unit) (e : Expr) : m Unit := visit #[] e
-  where visit (fvars : Array Expr) : Expr → m Unit
-    | Expr.lam n d b c => do
-      let d := d.instantiateRev fvars
-      f <| d.instantiateRev fvars
-      withLocalDecl n c d fun x =>
-        visit (fvars.push x) b
-    | e => do
-      f <| e.instantiateRev fvars
-
-def visitForall (f : Expr → m Unit) (e : Expr) : m Unit := visit #[] e
-  where visit (fvars : Array Expr) : Expr → m Unit
-    | Expr.forallE n d b c => do
-      let d := d.instantiateRev fvars
-      f d
-      withLocalDecl n c d fun x =>
-        visit (fvars.push x) b
-    | e => do
-      f <| e.instantiateRev fvars
-
-def visitLet (f : Expr → m Unit) (e : Expr) : m Unit := visit #[] e
-  where visit (fvars : Array Expr) : Expr → m Unit
-    | Expr.letE n d v b _ => do
-      let d := d.instantiateRev fvars
-      let v := v.instantiateRev fvars
-      f d
-      f v
-      withLetDecl n d v fun x =>
-        visit (fvars.push x) b
-    | e => do
-      f <| e.instantiateRev fvars
 
 def visitExpr (f : Expr → m Unit) (e : Expr) : m Unit :=
   match e with
