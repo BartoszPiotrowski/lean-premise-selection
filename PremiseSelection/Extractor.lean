@@ -67,10 +67,9 @@ def extractPremisesFromConstantInfo : ConstantInfo → MetaM (Option PremisesDat
       let thmFeats ← getStatementFeatures thm
       let mut argsFeats := []
       for arg in args do
-        let arg ← inferType arg 
         let argType ← inferType arg 
-        if argType.isProp then
-          let argFeats ← getStatementFeatures arg 
+        if (← inferType argType).isProp then
+          let argFeats ← getStatementFeatures argType 
           if ¬ argFeats.bigramCounts.isEmpty then 
             argsFeats := argsFeats ++ [argFeats]
       pure $ PremisesData.mk n thmFeats argsFeats (← extractPremises v)
