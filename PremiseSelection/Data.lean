@@ -14,17 +14,13 @@ inductive Direction : Type
 
 open Direction
 
-def loadFeatures (path : String) : IO (List (List String)) := do
+def load (path : String) : IO (List (List String)) := do
   dbg_trace "hello 1"
   let lines ← readLines path
   dbg_trace "hello 2"
   let a := lines.mapMemSave String.splitOn
   dbg_trace "hello 3"
   return a
-
-def loadLabels (path : String) : IO (List (List String)) := do
-  let lines ← readLines path
-  return lines.mapMemSave String.splitOn
 
 def saveLabels (labels : List Label) (path : String) : IO Unit:=
   let labelsAsStrings := List.map (fun x => String.joinWith x " ") labels
@@ -41,8 +37,8 @@ def labeled (features : List String) (label : List String) : Example :=
     ⟨(HashSet.ofList features), label⟩
 
 def loadLabeled (features : String) (labels : String) : IO (List Example) := do
-  let features ← loadFeatures features
-  let labels ← loadLabels labels
+  let features ← load features
+  let labels ← load labels
   let featuresLabels := List.zip features labels
   let labeled := fun (f, l) => labeled f l
   return List.map labeled featuresLabels
