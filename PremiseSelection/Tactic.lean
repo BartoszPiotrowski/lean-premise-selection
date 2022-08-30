@@ -2,6 +2,8 @@ import Lean
 import PremiseSelection.Forest
 import PremiseSelection.StatementFeatures
 
+namespace PremiseSelection
+
 open Lean Meta Elab Tactic Term
 
 def trainedForest := loadFromFile "data/forest1"
@@ -42,3 +44,5 @@ elab "suggest_premises_with_scores" : tactic => do
   let p := rankingWithScores (← trainedForest) e
   for i in p do
     IO.println i
+
+end PremiseSelection 

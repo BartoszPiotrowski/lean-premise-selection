@@ -1,11 +1,17 @@
 import PremiseSelection.Utils
 
+namespace PremiseSelection
+
 open Std List
 
 def Label := List String
+
 def Features := HashSet String
+
 structure Example := (features : Features) (label : Label)
+
 instance : Inhabited Example := { default := ⟨HashSet.empty, []⟩ }
+
 def Examples := List Example
 
 inductive Direction : Type
@@ -150,3 +156,5 @@ def avgCover10 (rankings : List (List α)) (true : List (List α)) :=
   let rankingsTrue := List.zip rankings true
   let coverages := rankingsTrue.map (fun (x, y) => (cover 10) x y)
   average coverages
+
+end PremiseSelection

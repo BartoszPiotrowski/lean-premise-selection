@@ -1,6 +1,8 @@
 import PremiseSelection.Utils
 import PremiseSelection.Data
 
+namespace PremiseSelection
+
 open Std
 
 def similarity (fCounts : HashMap String Int) (nTheorems : Nat) (f1 f2 : Features) : Float :=
@@ -33,3 +35,5 @@ def predict (trainData testData : List Example) (nNeighbours : Nat) :=
   let testData := testData.map Example.features
   let predictOne := predictOne trainData nNeighbours
   testData.mapParallel predictOne
+
+end PremiseSelection

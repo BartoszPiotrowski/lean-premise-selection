@@ -1,5 +1,7 @@
 import PremiseSelection.Tree
 
+namespace PremiseSelection
+
 def Forest.add (nTrees : Nat) (part initThreshold optimLevel : Float)
     (forest : List Tree) (e : Example) : IO (List Tree) := do
   let addTree := forest.length < nTrees
@@ -61,3 +63,5 @@ def stats (forest : List Tree) : String :=
   s!"Labels per leaf, min: {avgMinNodeL}, max: {avgMaxNodeL}, avg {avgAvgNodeL}\n" ++
   s!"Examples per leaf, min: {avgMinNodeE}, max: {avgMaxNodeE}, avg {avgAvgNodeE}\n" ++
   s!"(Labels / Examples) per leaf, min: {avgMinNodeLdivE}, max: {avgMaxNodeLdivE}, avg {avgAvgNodeLdivE}\n"
+
+end PremiseSelection

@@ -2,6 +2,8 @@ import PremiseSelection.Data
 
 abbrev SplitRule := String
 
+namespace PremiseSelection
+
 inductive Tree : Type
   | Node : SplitRule × Tree × Tree → Tree
   | Leaf : Label × Examples → Tree
@@ -11,7 +13,6 @@ instance : Inhabited Tree := { default := Tree.Leaf ([], []) }
 open Std
 open Tree
 open Direction
-
 
 def leaf (e : Example) :=
   Leaf (e.label, [e])
@@ -152,3 +153,5 @@ def Tree.maxSizeOfLeavesLdivE (t : Tree) :=
 
 def Tree.minSizeOfLeavesLdivE (t : Tree) :=
   minList t.sizesOfLeavesLdivE
+
+end PremiseSelection
