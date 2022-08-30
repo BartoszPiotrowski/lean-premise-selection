@@ -1,6 +1,6 @@
 import Init.Data.Random
-import Bootstrap.Data.HashSet
-import Bootstrap.Data.HashMap
+import Std.Data.HashSet
+import Std.Data.HashMap
 import Lean
 section List
 
