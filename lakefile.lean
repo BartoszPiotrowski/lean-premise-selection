@@ -3,7 +3,7 @@ open Lake DSL
 
 package leanPremiseSelection
 
---require mathlib from git "https://github.com/leanprover-community/mathlib4.git"
+require mathlib3port from git "https://github.com/leanprover-community/mathlib3port.git"@"1749724b7917aeea55830be63bdc0aee6587451c"
 
 @[defaultTarget]
 lean_lib PremiseSelection
