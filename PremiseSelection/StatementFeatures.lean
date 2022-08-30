@@ -1,5 +1,5 @@
 import Lean
-import PremiseSelection.Writer
+import Mathlib.Control.Writer
 import PremiseSelection.Utils
 open Lean
 /-!
@@ -19,6 +19,8 @@ def Std.RBMap.modify (k : κ) (fn : Option α → Option α) (r : RBMap κ α cm
 
 def Std.RBMap.mergeBy (fn : κ → α → α → α) (r1 r2 : RBMap κ α cmp) :  RBMap κ α cmp :=
   r2.fold (fun r1 k v2 => r1.modify k (fun | none => some v2 | some v1 => some (fn k v1 v2))) r1
+
+namespace PremiseSelection
 
 def Multiset (α : Type) [Ord α] := RBMap α Nat compare
 
@@ -90,3 +92,5 @@ def visitFeature (e : Expr) : WriterT StatementFeatures MetaM Unit  := do
 def getStatementFeatures (e : Expr) : MetaM StatementFeatures := do
   let ((), features) ← WriterT.run <| forEachExpr visitFeature e
   return features
+
+end PremiseSelection
