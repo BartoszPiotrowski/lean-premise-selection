@@ -212,6 +212,15 @@ def String.joinWith (l : List String) (c : String) : String :=
   | h :: t => h ++ t.foldl (fun r s => r ++ c ++ s) ""
   | [] => ""
 
+partial def zipMemSaveAux {α β} (acc : List (α × β)) (l₁ : List α) (l₂ : List β) :=
+  match (l₁, l₂) with
+  | ([], _) => List.reverse acc
+  | (_, []) => List.reverse acc
+  | (h₁ :: t₁, h₂ :: t₂) => zipMemSaveAux ((h₁, h₂) :: acc) t₁ t₂
+
+def List.zipMemSave {α β} (l₁ : List α) (l₂ : List β) : List (α × β) :=
+  zipMemSaveAux [] l₁ l₂
+
 def List.mapMemSave {α β} (f : α → β) (l : List α) :=
   let rec loop acc := fun
     | [] => List.reverse acc
