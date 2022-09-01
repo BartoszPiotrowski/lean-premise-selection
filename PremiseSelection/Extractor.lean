@@ -126,8 +126,9 @@ def extractPremisesImports : MetaM Json := do
   let mut importsData : Array Json := #[] 
   for (n, d) in Array.zip moduleNames moduleData do
     -- Ignore Init, Mathbin and PremiseSelection.
-    let userImport := n != `Init ∧ n != `Mathib ∧ n != `PremiseSelection
-    if imports.contains n ∧ userImport then 
+    let IsUserImport := 
+      n != `Init ∧ n != `Mathbin ∧ n.getRoot != `PremiseSelection
+    if imports.contains n ∧ IsUserImport then 
       let mut theoremsData : Array Json := #[]
       for cinfo in d.constants do 
         if let some data ← extractPremisesFromConstantInfo cinfo then 
