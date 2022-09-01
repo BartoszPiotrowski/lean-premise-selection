@@ -22,7 +22,7 @@ structure PremisesData where
   premises           : List Name 
 
 instance : ToJson PremisesData where 
-  toJson data := Id.run <| do
+  toJson data := 
     Json.mkObj [
       ("theoremName", toJson data.theoremName),
       ("theoremFeatures", toJson data.theoremFeatures),
