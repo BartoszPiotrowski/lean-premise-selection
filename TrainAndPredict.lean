@@ -1,4 +1,3 @@
-import Mathbin
 import PremiseSelection
 
 open PremiseSelection
