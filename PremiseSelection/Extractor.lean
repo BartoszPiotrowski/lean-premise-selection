@@ -81,12 +81,13 @@ section Commands
 /- Extract and print premises from a single theorem. -/
 def extractPremisesThm (stx : Syntax) : MetaM Json := do
   let ns ← resolveGlobalConst stx
-  let mut output : Array Json := #[]
+  let mut thmData : Array Json := #[]
   for n in ns do 
     if let some data ← extractPremisesFromId n then
-      output := output.push (toJson data)
-      dbg_trace s!"{data}"
-  return if output.size == 1 then output[0]! else Json.arr output
+      thmData := thmData.push (toJson data)
+  let output := if thmData.size == 1 then thmData[0]! else Json.arr thmData
+  dbg_trace s!"{output}"
+  return output 
 
 syntax (name := extract_premises_thm) "extract_premises_thm " term : command
 
@@ -99,12 +100,13 @@ def elabExtractPremisesThm : CommandElab
 /- Extract and print premises from all the theorems in the context. -/
 def extractPremisesCtx : MetaM Json := do 
     let cs := (← getEnv).constants.toList
-    let mut output : Array Json := #[]
+    let mut ctxData : Array Json := #[]
     for (_, cinfo) in cs do 
       if let some data ← extractPremisesFromConstantInfo cinfo then
-        output := output.push (toJson data)
-        dbg_trace s!"{data}"
-    return Json.arr output
+        ctxData := ctxData.push (toJson data)
+    let output := Json.arr ctxData
+    dbg_trace s!"{output}"
+    return output
 
 syntax (name := extract_premises_ctx) "extract_premises_ctx" : command
 
@@ -121,22 +123,21 @@ def extractPremisesImports : MetaM Json := do
   let moduleNames := env.header.moduleNames
   let moduleData := env.header.moduleData
 
-  let mut output : Array Json := #[] 
+  let mut importsData : Array Json := #[] 
   for (n, d) in Array.zip moduleNames moduleData do
     -- Ignore Init, Mathbin and PremiseSelection.
     let userImport := n != `Init ∧ n != `Mathib ∧ n != `PremiseSelection
     if imports.contains n ∧ userImport then 
-      dbg_trace s!"Module {n}"
       let mut theoremsData : Array Json := #[]
       for cinfo in d.constants do 
         if let some data ← extractPremisesFromConstantInfo cinfo then 
           theoremsData := theoremsData.push (toJson data)
-          dbg_trace s!"{data}"
       let moduleData := 
         Json.mkObj [("module", toJson n), ("theorems", Json.arr theoremsData)]
-      output := output.push moduleData
-    
-  return Json.arr output
+      importsData := importsData.push moduleData
+  let output := Json.arr importsData
+  dbg_trace s!"{output}"
+  return output
 
 syntax (name := extract_premises_imports) "extract_premises_imports" : command
 
