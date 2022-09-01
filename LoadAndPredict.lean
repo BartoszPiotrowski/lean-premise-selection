@@ -1,5 +1,7 @@
 import PremiseSelection
 
+open PremiseSelection
+
 def main (args : List String) : IO Unit := do
   let forest := args.get!                0
   let test_features := args.get!         1

@@ -1,5 +1,7 @@
 import PremiseSelection.Knn
 
+open PremiseSelection
+
 def main (args : List String) : IO Unit := do
   let train_features := args.get!        0
   let train_labels := args.get!          1
