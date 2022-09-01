@@ -7,12 +7,13 @@ namespace PremiseSelection
 open Lean Lean.Elab Lean.Elab.Term Lean.Elab.Command Lean.Meta
 
 -- TODO: Testing. Move to StatementFeatures with correct representation.
-instance : ToString StatementFeatures where 
-  toString features := Id.run <| do
-    let mut output : List String := []
+instance : ToJson StatementFeatures where 
+  toJson features := Id.run <| do
+    -- NOTE: Ignoring count for now.
+    let mut jsonFeatures : Array Json := #[]
     for (⟨n1, n2⟩, _) in features.bigramCounts do
-      output := output.append [s!"{n1}/{n2}"]
-    return " + ".intercalate output
+      jsonFeatures := jsonFeatures.push s!"{n1}/{n2}"
+    return Json.arr jsonFeatures
 
 structure PremisesData where 
   theoremName        : Name 
@@ -22,18 +23,11 @@ structure PremisesData where
 
 instance : ToJson PremisesData where 
   toJson data := Id.run <| do
-    -- NOTE: Ignoring count for now.
-    let nameJson : Json := toString data.theoremName
-    let thmFeatJson : Json := toString data.theoremFeatures
-    let argsFeatJson := 
-      Json.arr $ (Array.mk data.argumentsFeatures).map (Json.str ∘ toString)
-    let premisesJson : Json := 
-      Json.arr $ (Array.mk data.premises.eraseDup).map (Json.str ∘ toString)
     Json.mkObj [
-      ("theoremName", nameJson),
-      ("theoremFeatures", thmFeatJson),
-      ("argumentsFeatures", argsFeatJson),
-      ("premises", premisesJson)
+      ("theoremName", toJson data.theoremName),
+      ("theoremFeatures", toJson data.theoremFeatures),
+      ("argumentsFeatures", toJson data.argumentsFeatures),
+      ("premises", toJson data.premises.eraseDup)
     ]
 
 instance : ToString PremisesData where 
