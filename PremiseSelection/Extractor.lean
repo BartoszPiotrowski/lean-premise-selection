@@ -79,54 +79,71 @@ def extractPremisesFromId (id : Name) : MetaM (Option PremisesData) := do
 section Commands 
 
 /- Extract and print premises from a single theorem. -/
-def extractPremisesFromSyntax (stx : Syntax) : MetaM Unit := do
+def extractPremisesThm (stx : Syntax) : MetaM Json := do
   let ns ← resolveGlobalConst stx
+  let mut output : Array Json := #[]
   for n in ns do 
     if let some data ← extractPremisesFromId n then
+      output := output.push (toJson data)
       dbg_trace s!"{data}"
+  return if output.size == 1 then output[0]! else Json.arr output
 
 syntax (name := extract_premises_thm) "extract_premises_thm " term : command
 
 @[commandElab «extract_premises_thm»]
 def elabExtractPremisesThm : CommandElab
   | `(extract_premises_thm $id:ident) => 
-    liftTermElabM <| liftM <| extractPremisesFromSyntax id
+    liftTermElabM <| liftM <| do let _ ← extractPremisesThm id
   | _ => throwUnsupportedSyntax
 
 /- Extract and print premises from all the theorems in the context. -/
-def extractPremisesCtx : MetaM Unit := do 
+def extractPremisesCtx : MetaM Json := do 
     let cs := (← getEnv).constants.toList
+    let mut output : Array Json := #[]
     for (_, cinfo) in cs do 
       if let some data ← extractPremisesFromConstantInfo cinfo then
+        output := output.push (toJson data)
         dbg_trace s!"{data}"
+    return Json.arr output
 
 syntax (name := extract_premises_ctx) "extract_premises_ctx" : command
 
 @[commandElab «extract_premises_ctx»]
 def elabExtractPremisesCtx : CommandElab
   | `(extract_premises_ctx) => 
-    liftTermElabM <| liftM <| extractPremisesCtx
+    liftTermElabM <| liftM <| do let _ ← extractPremisesCtx
   | _ => throwUnsupportedSyntax
 
 /- Extract and print premises from all the theorems in the imports. -/
-def extractPremisesImports : MetaM Unit := do 
+def extractPremisesImports : MetaM Json := do 
   let env ← getEnv
   let imports := env.imports.map (·.module)
   let moduleNames := env.header.moduleNames
   let moduleData := env.header.moduleData
+
+  let mut output : Array Json := #[] 
   for (n, d) in Array.zip moduleNames moduleData do
-    if imports.contains n ∧ n != `Init ∧ n != `Extractor then 
+    -- Ignore Init, Mathbin and PremiseSelection.
+    let userImport := n != `Init ∧ n != `Mathib ∧ n != `PremiseSelection
+    if imports.contains n ∧ userImport then 
       dbg_trace s!"Module {n}"
+      let mut theoremsData : Array Json := #[]
       for cinfo in d.constants do 
         if let some data ← extractPremisesFromConstantInfo cinfo then 
+          theoremsData := theoremsData.push (toJson data)
           dbg_trace s!"{data}"
+      let moduleData := 
+        Json.mkObj [("module", toJson n), ("theorems", Json.arr theoremsData)]
+      output := output.push moduleData
+    
+  return Json.arr output
 
 syntax (name := extract_premises_imports) "extract_premises_imports" : command
 
 @[commandElab «extract_premises_imports»]
 def elabExtractPremisesImports : CommandElab
   | `(extract_premises_imports) => 
-    liftTermElabM <| liftM <| extractPremisesImports
+    liftTermElabM <| liftM <| do let _ ← extractPremisesImports
   | _ => throwUnsupportedSyntax
 
 end Commands 
