@@ -53,7 +53,7 @@ def extractPremises (e : Expr) : MetaM (List Name) := do
   let ((), premises) ← WriterT.run <| forEachExpr visitPremise e
   pure premises
 
-/- Given a `ConstantInfo` that holds theorem data, it finds the premises used in
+/-- Given a `ConstantInfo` that holds theorem data, it finds the premises used in
 the proof and constructs an object of type `PremisesData` with all-/
 def extractPremisesFromConstantInfo : ConstantInfo → MetaM (Option PremisesData)
   | ConstantInfo.thmInfo { name := n, type := ty, value := v, .. } => do
@@ -69,17 +69,15 @@ def extractPremisesFromConstantInfo : ConstantInfo → MetaM (Option PremisesDat
       pure $ PremisesData.mk n thmFeats argsFeats (← extractPremises v)
   | _ => pure none
 
-/- Same as `extractPremisesFromConstantInfo` but take an idenitfier and gets 
+/-- Same as `extractPremisesFromConstantInfo` but take an idenitfier and gets 
 its information from the environment. -/
 def extractPremisesFromId (id : Name) : MetaM (Option PremisesData) := do
   match (← getEnv).find? id with 
   | some cinfo => extractPremisesFromConstantInfo cinfo
   | none => pure none
 
-section Commands 
-
-/- Extract and print premises from a single theorem. -/
-def extractPremisesThm (stx : Syntax) : MetaM Json := do
+/-- Extract and print premises from a single theorem. -/
+def extractPremisesFromThm (stx : Syntax) : MetaM Json := do
   let ns ← resolveGlobalConst stx
   let mut thmData : Array Json := #[]
   for n in ns do 
@@ -89,16 +87,8 @@ def extractPremisesThm (stx : Syntax) : MetaM Json := do
   dbg_trace s!"{output}"
   return output 
 
-syntax (name := extract_premises_thm) "extract_premises_thm " term : command
-
-@[commandElab «extract_premises_thm»]
-def elabExtractPremisesThm : CommandElab
-  | `(extract_premises_thm $id:ident) => 
-    liftTermElabM <| liftM <| do let _ ← extractPremisesThm id
-  | _ => throwUnsupportedSyntax
-
-/- Extract and print premises from all the theorems in the context. -/
-def extractPremisesCtx : MetaM Json := do 
+/-- Extract and print premises from all the theorems in the context. -/
+def extractPremisesFromCtx : MetaM Json := do 
     let cs := (← getEnv).constants.toList
     let mut ctxData : Array Json := #[]
     for (_, cinfo) in cs do 
@@ -108,16 +98,8 @@ def extractPremisesCtx : MetaM Json := do
     dbg_trace s!"{output}"
     return output
 
-syntax (name := extract_premises_ctx) "extract_premises_ctx" : command
-
-@[commandElab «extract_premises_ctx»]
-def elabExtractPremisesCtx : CommandElab
-  | `(extract_premises_ctx) => 
-    liftTermElabM <| liftM <| do let _ ← extractPremisesCtx
-  | _ => throwUnsupportedSyntax
-
-/- Extract and print premises from all the theorems in the imports. -/
-def extractPremisesImports : MetaM Json := do 
+/-- Extract and print premises from all the theorems in the imports. -/
+def extractPremisesFromImports : MetaM Json := do 
   let env ← getEnv
   let imports := env.imports.map (·.module)
   let moduleNames := env.header.moduleNames
@@ -140,12 +122,31 @@ def extractPremisesImports : MetaM Json := do
   dbg_trace s!"{output}"
   return output
 
-syntax (name := extract_premises_imports) "extract_premises_imports" : command
+-- NOTE: The commands are only used for testing.
+section Commands 
 
-@[commandElab «extract_premises_imports»]
-def elabExtractPremisesImports : CommandElab
-  | `(extract_premises_imports) => 
-    liftTermElabM <| liftM <| do let _ ← extractPremisesImports
+syntax (name := extract_premises_from_thm) "extract_premises_from_thm " term : command
+
+@[commandElab «extract_premises_from_thm»]
+def elabExtractPremisesFromThm : CommandElab
+  | `(extract_premises_from_thm $id:ident) => 
+    liftTermElabM <| liftM <| do let _ ← extractPremisesFromThm id
+  | _ => throwUnsupportedSyntax
+
+syntax (name := extract_premises_from_ctx) "extract_premises_from_ctx" : command
+
+@[commandElab «extract_premises_from_ctx»]
+def elabExtractPremisesFromCtx : CommandElab
+  | `(extract_premises_from_ctx) => 
+    liftTermElabM <| liftM <| do let _ ← extractPremisesFromCtx
+  | _ => throwUnsupportedSyntax
+
+syntax (name := extract_premises_from_imports) "extract_premises_from_imports" : command
+
+@[commandElab «extract_premises_from_imports»]
+def elabExtractPremisesFromImports : CommandElab
+  | `(extract_premises_from_imports) => 
+    liftTermElabM <| liftM <| do let _ ← extractPremisesFromImports
   | _ => throwUnsupportedSyntax
 
 end Commands 
