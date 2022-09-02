@@ -26,7 +26,7 @@ instance : ToJson TheoremPremises where
   toJson data := 
     Json.mkObj [
       ("name",              toJson data.name),
-      ("neatures",          toJson data.features),
+      ("features",          toJson data.features),
       ("argumentsFeatures", toJson data.argumentsFeatures),
       ("premises",          toJson data.premises.eraseDup)
     ]
@@ -158,7 +158,7 @@ def extractUserPremisesFromImports : MetaM (Array ModulePremises) := do
 
     let mut theorems : Array TheoremPremises := #[]
     for theoremPremises in modulePremisesData.theorems do 
-      let theoremDef := "theorem" ++ toString theoremPremises.name
+      let theoremDef := "theorem " ++ toString theoremPremises.name
       backIter := backIter.forward theoremDef.length
       -- Find beginning of theorem definition.
       while (frontIter.extract backIter) != theoremDef ∧ backIter.hasNext do 
@@ -169,7 +169,8 @@ def extractUserPremisesFromImports : MetaM (Array ModulePremises) := do
         backIter := backIter.next
       -- Extract block with the rpoof of the theorem.
       let block := frontIter.extract backIter
-      dbg_trace s!"{block}"
+      dbg_trace s!"{theoremDef} +++ {block}"
+      -- NOTE: THIS DOES NOT WORK, e.g. @[to_additive] stuff....
       -- Reset iterators for next search.
       backIter := backIter.prevn 7 
       frontIter := backIter 
