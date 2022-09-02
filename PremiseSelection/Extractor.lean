@@ -146,17 +146,35 @@ def extractPremisesFromImports : MetaM (Array ModulePremises) := do
 def extractPremisesFromImportsJson : MetaM Json := 
   toJson <$> extractPremisesFromImports
 
-
-
-/-- -/
+/-- Call `extractPremisesFromImports`, then look at the source files and filter 
+the theorems to only obtain the ones typed by the user. -/
 def extractUserPremisesFromImports : MetaM (Array ModulePremises) := do 
   let mut moduleUserPremisesArray : Array ModulePremises := #[]
   for modulePremisesData in ← extractPremisesFromImports do 
     let name := modulePremisesData.name
-    let userText := userTextFromImport name
+    let userText ← userTextFromImport name
+    let mut frontIter := userText.mkIterator
+    let mut backIter := userText.mkIterator
+
     let mut theorems : Array TheoremPremises := #[]
     for theoremPremises in modulePremisesData.theorems do 
-      let theoremName := theoremPremises.name
+      let theoremDef := "theorem" ++ toString theoremPremises.name
+      backIter := backIter.forward theoremDef.length
+      -- Find beginning of theorem definition.
+      while (frontIter.extract backIter) != theoremDef ∧ backIter.hasNext do 
+        frontIter := frontIter.next
+        backIter := backIter.next
+      -- Keep going until next theorem or end of file.
+      while (frontIter.extract backIter) != "theorem" ∧ backIter.hasNext do 
+        backIter := backIter.next
+      -- Extract block with the rpoof of the theorem.
+      let block := frontIter.extract backIter
+      dbg_trace s!"{block}"
+      -- Reset iterators for next search.
+      backIter := backIter.prevn 7 
+      frontIter := backIter 
+
+      break
 
     let moduleUserPremises := ModulePremises.mk name theorems
     moduleUserPremisesArray := moduleUserPremisesArray.push moduleUserPremises
@@ -165,7 +183,8 @@ def extractUserPremisesFromImports : MetaM (Array ModulePremises) := do
   return moduleUserPremisesArray
   where 
     userTextFromImport (mod : Name) : MetaM String := do 
-      let mathbinPath : System.FilePath := "." / "lean_packages" / "mathlib3port"
+      let mathbinPath : System.FilePath := 
+        "." / "lean_packages" / "mathlib3port"
       if let some path ← SearchPath.findWithExt [mathbinPath] "lean" mod then 
         IO.FS.readFile path
       else return ""
