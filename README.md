@@ -1,9 +1,9 @@
 # Premise selection for Lean
 
-The aim of this project (which is for now work in progress) is to provide a tool
-for premise selection for Lean users.
+The aim of this project (which is for now a work in progress) is to provide a 
+tool for premise selection for Lean users.
 
-The premise selection mechanism is based on a machine learning -- a custom
+The premise selection mechanism is based on machine learning -- a custom
 version of the random forest algorithm.
 
 The machine learning model is trained on data extracted from `mathlib`. Each
