@@ -13,3 +13,5 @@ theorem test (a b c : Nat) (h : a < 4) : a + 0 = a := by rfl
 extract_premises_from_thm test
 
 --extract_premises_imports
+
+extract_user_premises_from_imports

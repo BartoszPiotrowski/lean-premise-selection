@@ -102,23 +102,49 @@ def extractPremisesFromCtx : MetaM Json := do
 def extractPremisesFromImports : MetaM Json := do 
   let env ← getEnv
   let imports := env.imports.map (·.module)
-  let moduleNames := env.header.moduleNames
-  let moduleData := env.header.moduleData
+  let moduleNamesArray := env.header.moduleNames
+  let moduleDataArray := env.header.moduleData
 
-  let mut importsData : Array Json := #[] 
-  for (n, d) in Array.zip moduleNames moduleData do
+  let mut outputArray : Array Json := #[] 
+  for (n, d) in Array.zip moduleNamesArray moduleDataArray do
     -- Ignore Init, Mathbin and PremiseSelection.
     let IsUserImport := 
       n != `Init ∧ n != `Mathbin ∧ n.getRoot != `PremiseSelection
     if imports.contains n ∧ IsUserImport then 
-      let mut theoremsData : Array Json := #[]
+      let mut theoremsArray : Array Json := #[]
       for cinfo in d.constants do 
         if let some data ← extractPremisesFromConstantInfo cinfo then 
-          theoremsData := theoremsData.push (toJson data)
+          theoremsArray := theoremsArray.push (toJson data)
+      let theoremsData := Json.arr theoremsArray
       let moduleData := 
-        Json.mkObj [("module", toJson n), ("theorems", Json.arr theoremsData)]
-      importsData := importsData.push moduleData
-  let output := Json.arr importsData
+        Json.mkObj [("module", toJson n), ("theorems", theoremsData)]
+      outputArray := outputArray.push moduleData
+  let output := Json.arr outputArray
+  dbg_trace s!"{output}"
+  return output
+
+/-- -/
+def extractUserPremisesFromImport (mod : Name) : MetaM Json := do 
+  let mathbinPath : System.FilePath := 
+    "." / "lean_packages" / "mathlib3port"
+  let sp : SearchPath := [mathbinPath] 
+  dbg_trace sp
+  dbg_trace mod 
+  dbg_trace mod.getRoot.toString
+  if let some path ← SearchPath.findWithExt sp "lean" mod then 
+    dbg_trace (toString path)
+  return ""
+
+/-- -/
+def extractUserPremisesFromImports : MetaM Json := do 
+  let mut outputArray : Array Json := #[]
+  for i in (← getEnv).imports do 
+    let mod := i.module
+    let theoremsData ← extractUserPremisesFromImport mod
+    let moduleData := 
+      Json.mkObj [("module", toJson mod), ("theorems", theoremsData)]
+    outputArray := outputArray.push moduleData
+  let output := Json.arr outputArray
   dbg_trace s!"{output}"
   return output
 
@@ -148,6 +174,15 @@ def elabExtractPremisesFromImports : CommandElab
   | `(extract_premises_from_imports) => 
     liftTermElabM <| liftM <| do let _ ← extractPremisesFromImports
   | _ => throwUnsupportedSyntax
+
+syntax (name := extract_user_premises_from_imports) "extract_user_premises_from_imports" : command
+
+@[commandElab «extract_user_premises_from_imports»]
+def elabExtractUserPremisesFromImports : CommandElab
+  | `(extract_user_premises_from_imports) => 
+    liftTermElabM <| liftM <| do let _ ← extractUserPremisesFromImports
+  | _ => throwUnsupportedSyntax
+
 
 end Commands 
 
