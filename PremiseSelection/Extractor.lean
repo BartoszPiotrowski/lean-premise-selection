@@ -56,7 +56,7 @@ private def getTheoremFromName (n : Name) : MetaM (List Name) := do
   --pure [n]
   -- NOTE: Option 2. Get all theorems.
   --if let ConstantInfo.thmInfo _ := (← getEnv).find? n then pure [n] else pure []
-  -- NOTE: Option 3. Get all consts that are Props.
+  -- NOTE: Option 3. Get all consts whose type is of type Prop.
   if let some cinfo := (← getEnv).find? n then
     if (← inferType cinfo.type).isProp then pure [n] else pure []
   else pure []
