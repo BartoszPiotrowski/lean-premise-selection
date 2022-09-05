@@ -134,9 +134,9 @@ def extractPremisesFromImports (allMathbin : Bool) : MetaM (Array ModulePremises
   let mut modulePremisesArray : Array ModulePremises := #[] 
   for (name, moduleData) in Array.zip moduleNamesArray moduleDataArray do
     -- NOTE: Ignore Init, Mathbin and PremiseSelection.
-    let isUserImport := name != `Init ∧ (allMathbin ∨ name != `Mathbin)
-    let isNotPremiseSelection := name.getRoot != `PremiseSelection
-    if imports.contains name ∧ isUserImport ∧ isNotPremiseSelection then 
+    let isMathbinImport := 
+      name.getRoot == `Mathbin ∧ (name != `Mathbin || allMathbin)
+    if imports.contains name ∧ isMathbinImport then 
       let mut theorems : Array TheoremPremises := #[]
       for cinfo in moduleData.constants do 
         if let some data ← extractPremisesFromConstantInfo cinfo then 
