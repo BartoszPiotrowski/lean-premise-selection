@@ -204,51 +204,22 @@ def extractUserPremisesFromImports (allMathbin : Bool) : MetaM (Array ModulePrem
         IO.FS.readFile path
       else return ""
 
--- NOTE: The commands are only used for testing.
 section Commands 
 
-syntax (name := extract_premises_from_thm) "extract_premises_from_thm " term : command
+elab "extract_premises_from_thm " id:term : command =>
+  liftTermElabM <| liftM <| do let _ ← extractPremisesFromThm id
 
-@[commandElab «extract_premises_from_thm»]
-def elabExtractPremisesFromThm : CommandElab
-  | `(extract_premises_from_thm $id:ident) => 
-    liftTermElabM <| liftM <| do let _ ← extractPremisesFromThm id
-  | _ => throwUnsupportedSyntax
+elab "extract_premises_from_ctx" : command =>
+  liftTermElabM <| do let _ ← extractPremisesFromCtx
 
-syntax (name := extract_premises_from_ctx) "extract_premises_from_ctx" : command
+elab "extract_premises_from_imports" : command =>
+  liftTermElabM <| do let _ ← extractPremisesFromImports (allMathbin := false)
 
-@[commandElab «extract_premises_from_ctx»]
-def elabExtractPremisesFromCtx : CommandElab
-  | `(extract_premises_from_ctx) => 
-    liftTermElabM <| liftM <| do let _ ← extractPremisesFromCtx
-  | _ => throwUnsupportedSyntax
+elab "extract_premises_from_all_imports" : command =>
+  liftTermElabM <| do let _ ← extractPremisesFromImports (allMathbin := true)
 
-syntax (name := extract_premises_from_imports) "extract_premises_from_imports" : command
-
-@[commandElab «extract_premises_from_imports»]
-def elabExtractPremisesFromImports : CommandElab
-  | `(extract_premises_from_imports) => 
-    liftTermElabM <| liftM <| do 
-      let _ ← extractPremisesFromImports (allMathbin := false)
-  | _ => throwUnsupportedSyntax
-
-syntax (name := extract_premises_from_all_imports) "extract_premises_from_all_imports" : command
-
-@[commandElab «extract_premises_from_all_imports»]
-def elabExtractPremisesFromAllImports : CommandElab
-  | `(extract_premises_from_all_imports) => 
-    liftTermElabM <| liftM <| do 
-      let _ ← extractPremisesFromImports (allMathbin := true)
-  | _ => throwUnsupportedSyntax
-
-syntax (name := extract_user_premises_from_imports) "extract_user_premises_from_imports" : command
-
-@[commandElab «extract_user_premises_from_imports»]
-def elabExtractUserPremisesFromImports : CommandElab
-  | `(extract_user_premises_from_imports) => 
-    liftTermElabM <| liftM <| do 
-      let _ ← extractUserPremisesFromImports (allMathbin := false)
-  | _ => throwUnsupportedSyntax
+elab "extract_user_premises_from_imports" : command =>
+  liftTermElabM <| do let _ ← extractUserPremisesFromImports (allMathbin := false)
 
 end Commands 
 
