@@ -221,6 +221,10 @@ elab "extract_premises_from_all_imports" : command =>
 elab "extract_user_premises_from_imports" : command =>
   liftTermElabM <| do let _ ← extractUserPremisesFromImports (allMathbin := false)
 
+elab "extract_user_premises_from_all_imports" : command =>
+  liftTermElabM <| do let _ ← extractUserPremisesFromImports (allMathbin := true)
+
+
 end Commands 
 
 end PremiseSelection
