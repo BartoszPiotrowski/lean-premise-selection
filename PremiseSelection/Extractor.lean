@@ -120,6 +120,10 @@ def extractPremisesFromCtx : MetaM (Array TheoremPremises) := do
 def extractPremisesFromCtxJson : MetaM Json := 
   toJson <$> extractPremisesFromCtx
 
+def extractPremisesFromCtxAndSave (f : System.FilePath) : MetaM Unit := do 
+  let content ← Json.pretty <$> extractPremisesFromCtxJson 
+  IO.FS.writeFile f content
+
 /-- Extract and print premises from all the theorems in the imports. -/
 def extractPremisesFromImports : MetaM (Array ModulePremises) := do 
   let env ← getEnv
@@ -145,6 +149,10 @@ def extractPremisesFromImports : MetaM (Array ModulePremises) := do
 
 def extractPremisesFromImportsJson : MetaM Json := 
   toJson <$> extractPremisesFromImports
+
+def extractPremisesFromImportsAndSave (f : System.FilePath) : MetaM Unit := do 
+  let content ← Json.pretty <$> extractPremisesFromImportsJson 
+  IO.FS.writeFile f content
 
 /-- Call `extractPremisesFromImports`, then look at the source files and filter 
 the theorems to only obtain the ones typed by the user. -/
