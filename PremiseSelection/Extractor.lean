@@ -207,7 +207,7 @@ def extractUserPremisesFromImports (allMathbin : Bool) : MetaM (Array ModulePrem
 section Commands 
 
 elab "extract_premises_from_thm " id:term : command =>
-  liftTermElabM <| liftM <| do let _ ← extractPremisesFromThm id
+  liftTermElabM <| do let _ ← extractPremisesFromThm id
 
 elab "extract_premises_from_ctx" : command =>
   liftTermElabM <| do let _ ← extractPremisesFromCtx
