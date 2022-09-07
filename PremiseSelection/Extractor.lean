@@ -4,7 +4,7 @@ import PremiseSelection.StatementFeatures
 
 namespace PremiseSelection
 
-open Lean Lean.Elab Lean.Elab.Term Lean.Elab.Command Lean.Meta
+open Lean Lean.Elab Lean.Elab.Term Lean.Elab.Command Lean.Meta System
 
 -- TODO: Testing. Move to StatementFeatures with correct representation.
 instance : ToJson StatementFeatures where 
@@ -52,11 +52,7 @@ instance : ToString ModulePremises where
 /-- Given a name `n`, if it qualifies as a premise, it returns `[n]`, otherwise 
 it returns the empty list. -/
 private def getTheoremFromName (n : Name) : MetaM (List Name) := do 
-  -- NOTE: Option 1. Get all consts.
-  --pure [n]
-  -- NOTE: Option 2. Get all theorems.
-  --if let ConstantInfo.thmInfo _ := (← getEnv).find? n then pure [n] else pure []
-  -- NOTE: Option 3. Get all consts whose type is of type Prop.
+  -- NOTE: Get all consts whose type is of type Prop.
   if let some cinfo := (← getEnv).find? n then
     if (← inferType cinfo.type).isProp then pure [n] else pure []
   else pure []
@@ -73,7 +69,8 @@ private def extractPremises (e : Expr) : MetaM (List Name) := do
 
 /-- Given a `ConstantInfo` that holds theorem data, it finds the premises used 
 in the proof and constructs an object of type `PremisesData` with all. -/
-private def extractPremisesFromConstantInfo : ConstantInfo → MetaM (Option TheoremPremises)
+private def extractPremisesFromConstantInfo 
+  : ConstantInfo → MetaM (Option TheoremPremises)
   | ConstantInfo.thmInfo { name := n, type := ty, value := v, .. } => do
     forallTelescope ty $ fun args thm => do
       let thmFeats ← getStatementFeatures thm
@@ -125,7 +122,8 @@ def extractPremisesFromCtxAndSave (f : System.FilePath) : MetaM Unit := do
   IO.FS.writeFile f content
 
 /-- Extract and print premises from all the theorems in the imports. -/
-def extractPremisesFromImports (allMathbin : Bool) : MetaM (Array ModulePremises) := do 
+def extractPremisesFromImports (allMathbin : Bool) (recursive : Bool) 
+  : MetaM (Array ModulePremises) := do 
   let env ← getEnv
   let imports := env.imports.map (·.module)
   let moduleNamesArray := env.header.moduleNames
@@ -133,8 +131,9 @@ def extractPremisesFromImports (allMathbin : Bool) : MetaM (Array ModulePremises
 
   let mut modulePremisesArray : Array ModulePremises := #[] 
   for (name, moduleData) in Array.zip moduleNamesArray moduleDataArray do
+    -- TODO: Recurse through modules if allMathbin.
     let isMathbinImport := 
-      name.getRoot == `Mathbin ∧ (name != `Mathbin || allMathbin)
+      name.getRoot == `Mathbin ∨ (name == `Mathbin && allMathbin)
     if imports.contains name ∧ isMathbinImport then 
       let mut theorems : Array TheoremPremises := #[]
       for cinfo in moduleData.constants do 
@@ -147,24 +146,27 @@ def extractPremisesFromImports (allMathbin : Bool) : MetaM (Array ModulePremises
   return modulePremisesArray
 
 def extractPremisesFromImportsJson : MetaM Json := 
-  toJson <$> extractPremisesFromImports (allMathbin := false)
+  toJson <$>  
+  extractPremisesFromImports (allMathbin := false) (recursive := false)
 
-def extractPremisesFromImportsAndSave (f : System.FilePath) : MetaM Unit := do 
+def extractPremisesFromImportsAndSave (f : FilePath) : MetaM Unit := do 
   let content ← Json.pretty <$> extractPremisesFromImportsJson 
   IO.FS.writeFile f content
 
 def extractPremisesFromAllImportsJson : MetaM Json := 
-  toJson <$> extractPremisesFromImports (allMathbin := true)
+  toJson <$> 
+  extractPremisesFromImports (allMathbin := true) (recursive := false)
 
-def extractPremisesFromAllImportsAndSave (f : System.FilePath) : MetaM Unit := do 
+def extractPremisesFromAllImportsAndSave (f : FilePath) : MetaM Unit := do 
   let content ← Json.pretty <$> extractPremisesFromAllImportsJson 
   IO.FS.writeFile f content
 
 /-- Call `extractPremisesFromImports`, then look at the source files and filter 
 the theorems to only obtain the ones typed by the user. -/
-def extractUserPremisesFromImports (allMathbin : Bool) : MetaM (Array ModulePremises) := do 
+def extractUserPremisesFromImports (allMathbin : Bool) (recursive : Bool) 
+  : MetaM (Array ModulePremises) := do 
   let mut moduleUserPremisesArray : Array ModulePremises := #[]
-  for modulePremisesData in ← extractPremisesFromImports allMathbin do 
+  for modulePremisesData in ← extractPremisesFromImports allMathbin recursive do 
     let name := modulePremisesData.name
     let userText ← userTextFromImport name
     let mut frontIter := userText.mkIterator
@@ -212,18 +214,27 @@ elab "extract_premises_from_thm " id:term : command =>
 elab "extract_premises_from_ctx" : command =>
   liftTermElabM <| do let _ ← extractPremisesFromCtx
 
+-- TODO: Unify commands with options.
+
 elab "extract_premises_from_imports" : command =>
-  liftTermElabM <| do let _ ← extractPremisesFromImports (allMathbin := false)
+  liftTermElabM <| do 
+    let _ ← extractPremisesFromImports 
+      (allMathbin := false) (recursive := false)
 
 elab "extract_premises_from_all_imports" : command =>
-  liftTermElabM <| do let _ ← extractPremisesFromImports (allMathbin := true)
+  liftTermElabM <| do 
+    let _ ← extractPremisesFromImports 
+      (allMathbin := true) (recursive := false)
 
 elab "extract_user_premises_from_imports" : command =>
-  liftTermElabM <| do let _ ← extractUserPremisesFromImports (allMathbin := false)
+  liftTermElabM <| do 
+    let _ ← extractUserPremisesFromImports 
+      (allMathbin := false) (recursive := false)
 
 elab "extract_user_premises_from_all_imports" : command =>
-  liftTermElabM <| do let _ ← extractUserPremisesFromImports (allMathbin := true)
-
+  liftTermElabM <| do 
+    let _ ← extractUserPremisesFromImports 
+      (allMathbin := true) (recursive := false)
 
 end Commands 
 
