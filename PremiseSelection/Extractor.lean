@@ -36,13 +36,13 @@ instance : ToString TheoremPremises where
 
 /-- Holds the premise data for each theorem in a module. -/
 structure ModulePremises where 
-  name     : Name 
+  module   : Name 
   theorems : Array TheoremPremises 
 
 instance : ToJson ModulePremises where 
   toJson data := 
     Json.mkObj [
-      ("name",     toJson data.name),
+      ("module",   toJson data.module),
       ("theorems", toJson data.theorems)
     ]
 
@@ -167,8 +167,8 @@ def extractUserPremisesFromImports (allMathbin : Bool) (recursive : Bool)
   : MetaM (Array ModulePremises) := do 
   let mut moduleUserPremisesArray : Array ModulePremises := #[]
   for modulePremisesData in ← extractPremisesFromImports allMathbin recursive do 
-    let name := modulePremisesData.name
-    let userText ← userTextFromImport name
+    let module := modulePremisesData.module
+    let userText ← userTextFromImport module
     let mut frontIter := userText.mkIterator
     let mut backIter := userText.mkIterator
 
