@@ -3,32 +3,7 @@ import Mathlib.Tactic.ToAdditive
 
 open Lean System
 
--- let theoremDef := "theorem " ++ toString theoremPremises.name
---       backIter := backIter.forward theoremDef.length
---       -- Find beginning of theorem definition.
---       while (frontIter.extract backIter) != theoremDef ∧ backIter.hasNext do 
---         frontIter := frontIter.next
---         backIter := backIter.next
---       -- Keep going until next theorem or end of file.
---       while (frontIter.extract backIter) != "theorem" ∧ backIter.hasNext do 
---         backIter := backIter.next
---       -- Extract block with the rpoof of the theorem.
---       let block := frontIter.extract backIter
---       dbg_trace s!"{theoremDef} +++ {block}"
---       -- NOTE: THIS DOES NOT WORK, e.g. @[to_additive] stuff....
---       -- Reset iterators for next search.
---       backIter := backIter.prevn 7 
---       frontIter := backIter 
-
---       break
-
-#check ToAdditive.guessName
-
-/- -/
-def pathFromImport (mod : Name) : MetaM (Option FilePath) := do 
-  let mathbinPath : System.FilePath := "." / "lean_packages" / "mathlib3port"
-  SearchPath.findWithExt [mathbinPath] "lean" mod
-
+-- TODO: Move.
 namespace ToAdditive
 
 /- NOTE: I'm guessing this is the inverse of guessNameDict? -/
@@ -73,12 +48,49 @@ def reverseGuessName : String → String :=
 
 end ToAdditive
 
-/- Given a theorem name and text from a file  -/
-def proofSource (thm : Name) (modulePath : FilePath) : MetaM (Option String) := 
-  dbg_trace s!"{thm} : {modulePath}"
-  dbg_trace s!"{ToAdditive.guessName thm.toString}"
-  dbg_trace s!"{ToAdditive.reverseGuessName thm.toString}"
-  
-  pure ""
+-- TODO: Move
+namespace String 
 
--- awk '/theorem eq_inv_iff_eq_inv/{flag=1;next}/theorem/{flag=0}flag' ./lean_packages/mathlib3port/Mathbin/Algebra/Group/Basic.lean
+/- Check if a string is contained in another one. -/
+partial def isSubstrOf (target str : String) : Bool :=
+  loop "" 0
+where
+  loop (acc : String) (pos : String.Pos) : Bool :=
+    if pos.byteIdx + target.endPos.byteIdx > str.endPos.byteIdx then
+      false
+    else if str.substrEq pos target 0 target.endPos.byteIdx then
+      true
+    else
+      loop acc (str.next pos)
+
+end String 
+
+/- Find file path from module imported from Mathbin. -/
+def pathFromMathbinImport (mod : Name) : MetaM (Option FilePath) := do 
+  let mathbinPath : System.FilePath := "." / "lean_packages" / "mathlib3port"
+  SearchPath.findWithExt [mathbinPath] "lean" mod
+
+/- Given a theorem name and a file path, extract the proof text. -/
+def proofSource (thm : Name) (modulePath : FilePath) : MetaM (Option String) := do
+  let mut res := "" 
+  for thmName in #[thm.toString, ToAdditive.reverseGuessName thm.toString] do 
+    let keywords := 
+      "(theorem|instance|class|attribute|section|namespace|def|variable)"
+    let matchThmBody := 
+      "'/theorem " ++ thmName ++ "/{flag=1;next}/" ++ keywords ++ "/{flag=0}flag'"
+    let args := #[matchThmBody, modulePath.toString]
+    dbg_trace s!"Running awk witha rgs: {args}. \n"
+    let output ← IO.Process.output { cmd := "awk", args := args }
+    if output.exitCode != 0 then 
+      res := output.stdout
+    if !res.isEmpty then 
+      break 
+  
+  return (if res.isEmpty then none else some res)
+
+/- Given a list of premises and proof text, get rid of the ones that do not 
+appear. We take into account `ToAdditive` name translations. -/
+def filterUserPremises (premises : List Name) (proofSource : String) : List Name := 
+  let appearsInProof (s : String) : Bool := s.isSubstrOf proofSource
+  premises.filter (fun p => 
+    [p.toString, ToAdditive.reverseGuessName p.toString].any appearsInProof)
