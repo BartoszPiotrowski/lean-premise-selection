@@ -74,10 +74,11 @@ def reverseGuessName : String → String :=
 end ToAdditive
 
 /- Given a theorem name and text from a file  -/
-def proofSource (thm : Name) (modulePath : FilePath) : MetaM String := 
+def proofSource (thm : Name) (modulePath : FilePath) : MetaM (Option String) := 
   dbg_trace s!"{thm} : {modulePath}"
   dbg_trace s!"{ToAdditive.guessName thm.toString}"
   dbg_trace s!"{ToAdditive.reverseGuessName thm.toString}"
   
   pure ""
-  
+
+-- awk '/theorem eq_inv_iff_eq_inv/{flag=1;next}/theorem/{flag=0}flag' ./lean_packages/mathlib3port/Mathbin/Algebra/Group/Basic.lean
