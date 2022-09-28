@@ -1,6 +1,7 @@
 import Lean
 import Mathlib.Control.Writer
 import PremiseSelection.StatementFeatures 
+import PremiseSelection.ProofSource 
 
 namespace PremiseSelection
 
@@ -164,42 +165,20 @@ def extractUserPremisesFromImports (recursive : Bool)
   let mut moduleUserPremisesArray : Array ModulePremises := #[]
   for modulePremisesData in ← extractPremisesFromImports recursive do 
     let module := modulePremisesData.module
-    let userText ← userTextFromImport module
-    let mut frontIter := userText.mkIterator
-    let mut backIter := userText.mkIterator
+    if let some modulePath ← pathFromImport module then 
+      let mut theorems : Array TheoremPremises := #[]
+      for theoremPremises in modulePremisesData.theorems do 
+        let s ← proofSource theoremPremises.name modulePath
+        -- TODO, here we filter.
+        break
 
-    let mut theorems : Array TheoremPremises := #[]
-    for theoremPremises in modulePremisesData.theorems do 
-      let theoremDef := "theorem " ++ toString theoremPremises.name
-      backIter := backIter.forward theoremDef.length
-      -- Find beginning of theorem definition.
-      while (frontIter.extract backIter) != theoremDef ∧ backIter.hasNext do 
-        frontIter := frontIter.next
-        backIter := backIter.next
-      -- Keep going until next theorem or end of file.
-      while (frontIter.extract backIter) != "theorem" ∧ backIter.hasNext do 
-        backIter := backIter.next
-      -- Extract block with the rpoof of the theorem.
-      let block := frontIter.extract backIter
-      dbg_trace s!"{theoremDef} +++ {block}"
-      -- NOTE: THIS DOES NOT WORK, e.g. @[to_additive] stuff....
-      -- Reset iterators for next search.
-      backIter := backIter.prevn 7 
-      frontIter := backIter 
-
-      break
-
-    let moduleUserPremises := ModulePremises.mk module theorems
-    moduleUserPremisesArray := moduleUserPremisesArray.push moduleUserPremises
+      let moduleUserPremises := ModulePremises.mk module theorems
+      moduleUserPremisesArray := moduleUserPremisesArray.push moduleUserPremises
+    else 
+      dbg_trace s!"Could not find path for {module}, not filtering premises."
+      moduleUserPremisesArray := moduleUserPremisesArray.push modulePremisesData
 
   return moduleUserPremisesArray
-  where 
-    userTextFromImport (mod : Name) : MetaM String := do 
-      let mathbinPath : System.FilePath := 
-        "." / "lean_packages" / "mathlib3port"
-      if let some path ← SearchPath.findWithExt [mathbinPath] "lean" mod then 
-        IO.FS.readFile path
-      else return ""
 
 section Commands 
 
