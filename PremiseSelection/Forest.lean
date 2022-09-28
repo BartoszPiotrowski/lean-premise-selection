@@ -22,16 +22,16 @@ def forest (passes nTrees : Nat) (part initThreshold optimLevel : Float)
       forest ← add forest e
   return forest
 
-def vote (votes : List Label) :=
+def vote (votes : List Label) : List (String × Int):=
   let votes := votes.flattenUnordered
   let freqs := (freqs votes).toList
   List.sort (fun (_, x) (_, y) => x > y) freqs
 
-def rankingWithScores (forest : List Tree) (e : Example) :=
+def rankingWithScores (forest : List Tree) (e : Example) : List (String × Int) :=
   let votes := forest.map (Tree.classify e)
   vote votes
 
-def ranking forest e :=
+def ranking (forest : List Tree) (e : Example) : List String :=
   let scores := rankingWithScores forest e
   List.map Prod.fst scores
 

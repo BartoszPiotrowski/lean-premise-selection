@@ -1,6 +1,7 @@
 import Lean
 import PremiseSelection.Forest
 import PremiseSelection.StatementFeatures
+import PremiseSelection.Widget
 
 namespace PremiseSelection
 
@@ -8,15 +9,19 @@ open Lean Meta Elab Tactic Term
 
 def trainedForest := loadFromFile "data/forest1"
 
-elab "suggest_premises" : tactic => do
+syntax (name := suggestPremises) "suggest_premises" : tactic
+
+@[tactic suggestPremises]
+def suggestPremisesTactic : Tactic := fun stx => do
   let g ← getMainGoal
   let m := MessageData.ofGoal g
   let m ← addMessageContext m
   let m ← m.toString
   let e := unlabeled m.splitOn
-  let p := ranking (← trainedForest) e
-  for i in p do
-    IO.println i
+  let p := rankingWithScores (← trainedForest) e
+  let p : List Item := p.map (fun (name, score) => {name, score})
+  saveWidget stx p.toArray
+  return ()
 
 elab "print_smt_features" : tactic => do
   let t ← getMainTarget
@@ -45,4 +50,4 @@ elab "suggest_premises_with_scores" : tactic => do
   for i in p do
     IO.println i
 
-end PremiseSelection 
+end PremiseSelection
