@@ -8,6 +8,6 @@ example (a b c : Nat) (h : a < 4) : a + 0 = a := by {
 }
 
 example (a b c : Nat) : a + 0 = a := by {
-  suggest_premises_with_scores
+  suggest_premises
   apply rfl
 }

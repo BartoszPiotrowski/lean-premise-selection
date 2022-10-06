@@ -1,6 +1,6 @@
 # Premise selection for Lean
 
-The aim of this project (which is for now a work in progress) is to provide a 
+The aim of this project (which is for now a work in progress) is to provide a
 tool for premise selection for Lean users.
 
 The premise selection mechanism is based on machine learning -- a custom
@@ -15,3 +15,16 @@ The user can ask for advice from the trained model by using the provided tactic
 `suggest_premises`. It returns a ranking of premises likely useful for proving a
 theorem at hand. The user may also extract their own training data and train
 their own machine learning model for premise selection.
+
+# Building the widget
+
+In order to see the interactive list of premises you need to
+run the following:
+
+```
+cd widget
+npm i
+npm run build -- --tsxName index
+```
+
+Then head over to `TacticTest.lean` and hover on `suggest_premises`.

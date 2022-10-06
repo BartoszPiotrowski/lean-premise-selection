@@ -7,6 +7,7 @@
   },
   "license": "Apache-2.0",
   "dependencies": {
+    "@leanprover/infoview": "^0.2.0",
     "@react-three/drei": "^9.19.4",
     "@react-three/fiber": "^8.2.2",
     "react": "^18.2.0",
