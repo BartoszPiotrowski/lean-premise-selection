@@ -40,14 +40,5 @@ elab "print_smt_features" : tactic => do
   for (⟨n1, n2⟩, count) in features.bigramCounts do
     dbg_trace (s!"{n1}/{n2}", count)
 
-elab "suggest_premises_with_scores" : tactic => do
-  let g ← getMainGoal
-  let m := MessageData.ofGoal g
-  let m ← addMessageContext m
-  let m ← m.toString
-  let e := unlabeled m.splitOn
-  let p := rankingWithScores (← trainedForest) e
-  for i in p do
-    IO.println i
 
 end PremiseSelection
