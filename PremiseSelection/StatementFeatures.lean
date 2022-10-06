@@ -47,8 +47,10 @@ structure Bigram where
   deriving Ord
 
 structure StatementFeatures where
+  /-- Just the constant's names and how frequently they arise. -/
   nameCounts : Multiset Name := ∅
   bigramCounts : Multiset Bigram := ∅
+  subexpressions : List Expr := ∅
 
 instance : ForIn M (Multiset α) (α × Nat) :=
   show ForIn _ (RBMap _ _ _) _ by infer_instance
@@ -58,6 +60,7 @@ instance : Append StatementFeatures where
   append x y := {
     nameCounts := x.nameCounts ++ y.nameCounts
     bigramCounts := x.bigramCounts ++ y.bigramCounts
+    subexpressions := x.subexpressions ++ y.subexpressions
   }
 
 def StatementFeatures.mkName : Name → StatementFeatures
@@ -65,6 +68,9 @@ def StatementFeatures.mkName : Name → StatementFeatures
 
 def StatementFeatures.mkBigram : Name → Name → StatementFeatures
   | n1, n2 => {bigramCounts := Multiset.singleton ⟨n1, n2⟩}
+
+def StatementFeatures.mkSubexpr : Expr → StatementFeatures
+  | x => {subexpressions := [x]}
 
 def immediateName (e : Expr) : Option Name :=
   if let .const n _ := e then
@@ -78,6 +84,7 @@ def getHeadName? (e : Expr) : Option Name := do
   immediateName <| e.getAppFn
 
 def visitFeature (e : Expr) : WriterT StatementFeatures MetaM Unit  := do
+  tell <| StatementFeatures.mkSubexpr e
   if let some n := immediateName e then
     tell <| StatementFeatures.mkName n
   if e.isApp then
