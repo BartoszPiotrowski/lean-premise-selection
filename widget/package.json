@@ -8,11 +8,8 @@
   "license": "Apache-2.0",
   "dependencies": {
     "@leanprover/infoview": "^0.2.0",
-    "@react-three/drei": "^9.19.4",
-    "@react-three/fiber": "^8.2.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "three": "^0.143.0",
     "vscode-languageserver-protocol": "^3.17.2"
   },
   "devDependencies": {
@@ -22,7 +19,6 @@
     "@rollup/plugin-typescript": "^8.3.4",
     "@types/react": "^17.0.39",
     "@types/react-dom": "^17.0.11",
-    "@types/three": "^0.143.0",
     "tslib": "^2.4.0",
     "typescript": "^4.7.4"
   }
