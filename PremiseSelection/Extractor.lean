@@ -165,12 +165,15 @@ def extractUserPremisesFromImports (recursive : Bool)
   let mut moduleUserPremisesArray : Array ModulePremises := #[]
   for modulePremisesData in ← extractPremisesFromImports recursive do 
     let module := modulePremisesData.module
-    if let some modulePath ← pathFromImport module then 
+    if let some modulePath ← pathFromMathbinImport module then 
       let mut theorems : Array TheoremPremises := #[]
       for theoremPremises in modulePremisesData.theorems do 
-        let s ← proofSource theoremPremises.name modulePath
-        -- TODO, here we filter.
-        break
+        if let some source ← proofSource theoremPremises.name modulePath then
+          let filtered := filterUserPremises theoremPremises.premises source
+          dbg_trace s!"User premises for {theoremPremises.name} : {filtered}"
+        else 
+          dbg_trace s!"Could not find proof source for {theoremPremises.name}."
+          continue
 
       let moduleUserPremises := ModulePremises.mk module theorems
       moduleUserPremisesArray := moduleUserPremisesArray.push moduleUserPremises

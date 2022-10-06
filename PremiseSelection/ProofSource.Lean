@@ -77,11 +77,10 @@ def proofSource (thm : Name) (modulePath : FilePath) : MetaM (Option String) := 
     let keywords := 
       "(theorem|instance|class|attribute|section|namespace|def|variable)"
     let matchThmBody := 
-      "'/theorem " ++ thmName ++ "/{flag=1;next}/" ++ keywords ++ "/{flag=0}flag'"
+      "/theorem " ++ thmName ++ "/{flag=1;next}/" ++ keywords ++ "/{flag=0}flag"
     let args := #[matchThmBody, modulePath.toString]
-    dbg_trace s!"Running awk witha rgs: {args}. \n"
     let output ← IO.Process.output { cmd := "awk", args := args }
-    if output.exitCode != 0 then 
+    if output.exitCode == 0 then 
       res := output.stdout
     if !res.isEmpty then 
       break 
