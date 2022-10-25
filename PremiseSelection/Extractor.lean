@@ -121,6 +121,8 @@ def extractPremisesFromCtxAndSave (f : System.FilePath) : MetaM Unit := do
   IO.FS.writeFile f content
 
 /-- Extract and print premises from all the theorems in the imports. -/
+-- TODO: Implement recursive.
+-- TODO: Save while visiting.
 def extractPremisesFromImports (recursive : Bool) 
   : MetaM (Array ModulePremises) := do 
   let env ← getEnv
