@@ -3,55 +3,55 @@ import Mathlib.Tactic.ToAdditive
 
 open Lean System
 
--- TODO: Move.
 namespace ToAdditive
 
-/- NOTE: I'm guessing this is the inverse of guessNameDict? -/
-private def reverseGuessNameDict (is_comm : Bool) : List String → List String
-| "nonneg" :: s        => addCommPrefix is_comm "one" :: "le"    :: reverseGuessNameDict false s
-| "pos" :: s           => addCommPrefix is_comm "one" :: "lt"       :: reverseGuessNameDict false s
-| "nonpos" :: s        => addCommPrefix is_comm "le" :: "one"    :: reverseGuessNameDict false s
---| "neg" :: s           => addCommPrefix is_comm "lt" :: "one"       :: reverseGuessNameDict false s
-| "single" :: s        => "mul" :: addCommPrefix is_comm "single"    :: reverseGuessNameDict false s
-| "support" :: s       => "mul" :: addCommPrefix is_comm "support"   :: reverseGuessNameDict false s
-| "tsupport" :: s      => "mul" :: addCommPrefix is_comm "tsupport"  :: reverseGuessNameDict false s
-| "indicator" :: s     => "mul" :: addCommPrefix is_comm "indicator" :: reverseGuessNameDict false s
-| "vadd" :: s          => addCommPrefix is_comm "smul"      :: reverseGuessNameDict false s
-| "neg" :: s           => addCommPrefix is_comm "inv"       :: reverseGuessNameDict false s
-| "sub" :: s           => addCommPrefix is_comm "div"       :: reverseGuessNameDict false s
-| "zero" :: s          => addCommPrefix is_comm "one"      :: reverseGuessNameDict false s
-| "sum" :: s           => addCommPrefix is_comm "prod"       :: reverseGuessNameDict false s
-| "finsum" :: s        => addCommPrefix is_comm "finprod"    :: reverseGuessNameDict false s
-| "nsmul" :: s         => addCommPrefix is_comm "pow"     :: reverseGuessNameDict false s
---| "nsmul" :: s         => addCommPrefix is_comm "npow"     :: reverseGuessNameDict false s
-| "zsmul" :: s         => addCommPrefix is_comm "zpow"     :: reverseGuessNameDict false s
-| "add" :: "monoid" :: s      => (addCommPrefix is_comm "monoid")    :: reverseGuessNameDict false s
-| "add" :: "submonoid" :: s   => (addCommPrefix is_comm "submonoid") :: reverseGuessNameDict false s
-| "add" :: "group" :: s       => (addCommPrefix is_comm "group")     :: reverseGuessNameDict false s
-| "add" :: "subgroup" :: s    => (addCommPrefix is_comm "subgroup")  :: reverseGuessNameDict false s
-| "add" :: "semigroup" :: s   => (addCommPrefix is_comm "semigroup") :: reverseGuessNameDict false s
-| "add" :: "magma" :: s       => (addCommPrefix is_comm "magma")     :: reverseGuessNameDict false s
-| "add" :: "haar" :: s        => (addCommPrefix is_comm "haar")      :: reverseGuessNameDict false s
-| "add" :: "prehaar" :: s     => (addCommPrefix is_comm "prehaar")   :: reverseGuessNameDict false s
-| "add" :: "unit" :: s        => (addCommPrefix is_comm "unit")      :: reverseGuessNameDict false s
-| "add" :: "units" :: s       => (addCommPrefix is_comm "units")     :: reverseGuessNameDict false s
-| "add" :: s                  => addCommPrefix is_comm "mul"       :: reverseGuessNameDict false s
-| "comm" :: s        => reverseGuessNameDict true s
-| x :: s             => (addCommPrefix is_comm x :: reverseGuessNameDict false s)
-| []                 => bif is_comm then ["comm"] else []
+/-- I'm guessing this is the inverse of `guessNameDict`? -/
+private def reverseGuessNameDict (is_comm : Bool) : List String → List (List String)
+| "nonneg" :: s    => (reverseGuessNameDict false s).map (addCommPrefix is_comm "one" :: "le" :: ·)
+| "pos" :: s       => (reverseGuessNameDict false s).map (addCommPrefix is_comm "one" :: "lt" :: ·)
+| "nonpos" :: s    => (reverseGuessNameDict false s).map (addCommPrefix is_comm "le" :: "one" :: ·) 
+| "single" :: s    => (reverseGuessNameDict false s).map ("mul" :: addCommPrefix is_comm "single"    :: ·)
+| "support" :: s   => (reverseGuessNameDict false s).map ("mul" :: addCommPrefix is_comm "support"   :: ·)
+| "tsupport" :: s  => (reverseGuessNameDict false s).map ("mul" :: addCommPrefix is_comm "tsupport"  :: ·)
+| "indicator" :: s => (reverseGuessNameDict false s).map ("mul" :: addCommPrefix is_comm "indicator" :: ·)
+| "vadd" :: s      => (reverseGuessNameDict false s).map (addCommPrefix is_comm "smul"        :: ·)
+| "neg" :: s       => (reverseGuessNameDict false s).map (addCommPrefix is_comm "inv"         :: ·) ++
+                      (reverseGuessNameDict false s).map (addCommPrefix is_comm "lt" :: "one" :: ·)
+| "sub" :: s       => (reverseGuessNameDict false s).map (addCommPrefix is_comm "div"         :: ·)
+| "zero" :: s      => (reverseGuessNameDict false s).map (addCommPrefix is_comm "one"         :: ·) 
+| "sum" :: s       => (reverseGuessNameDict false s).map (addCommPrefix is_comm "prod"        :: ·)
+| "finsum" :: s    => (reverseGuessNameDict false s).map (addCommPrefix is_comm "finprod"     :: ·)
+| "nsmul" :: s     => (reverseGuessNameDict false s).map (addCommPrefix is_comm "pow"         :: ·) ++ 
+                      (reverseGuessNameDict false s).map (addCommPrefix is_comm "npow"        :: ·)
+| "zsmul" :: s     => (reverseGuessNameDict false s).map (addCommPrefix is_comm "zpow"        :: ·)
+| "add" :: "monoid" :: s    => (reverseGuessNameDict false s).map (addCommPrefix is_comm "monoid"    :: ·)
+| "add" :: "submonoid" :: s => (reverseGuessNameDict false s).map (addCommPrefix is_comm "submonoid" :: ·)
+| "add" :: "group" :: s     => (reverseGuessNameDict false s).map (addCommPrefix is_comm "group"     :: ·)
+| "add" :: "subgroup" :: s  => (reverseGuessNameDict false s).map (addCommPrefix is_comm "subgroup"  :: ·)
+| "add" :: "semigroup" :: s => (reverseGuessNameDict false s).map (addCommPrefix is_comm "semigroup" :: ·)
+| "add" :: "magma" :: s     => (reverseGuessNameDict false s).map (addCommPrefix is_comm "magma"     :: ·)
+| "add" :: "haar" :: s      => (reverseGuessNameDict false s).map (addCommPrefix is_comm "haar"      :: ·)
+| "add" :: "prehaar" :: s   => (reverseGuessNameDict false s).map (addCommPrefix is_comm "prehaar"   :: ·)
+| "add" :: "unit" :: s      => (reverseGuessNameDict false s).map (addCommPrefix is_comm "unit"      :: ·)
+| "add" :: "units" :: s     => (reverseGuessNameDict false s).map (addCommPrefix is_comm "units"     :: ·)
+| "add" :: s                => (reverseGuessNameDict false s).map (addCommPrefix is_comm "mul"       :: ·)
+| "comm" :: s => reverseGuessNameDict true s
+| x :: s      => (reverseGuessNameDict false s).map (addCommPrefix is_comm x :: ·)
+| []          => bif is_comm then [["comm"]] else [[]]
 
 /-- Reverse name autogenerated by `to_additive`. -/
-def reverseGuessName : String → String :=
-  String.mapTokens ''' $
-  fun s => String.intercalate (String.singleton '_') $
-  reverseGuessNameDict false (s.splitOn "_")
+def reverseGuessName : String → List String :=
+  mapTokensList ''' <| fun s => 
+    List.map "_".intercalate (reverseGuessNameDict false (s.splitOn "_"))
+where 
+  mapTokensList (c : Char) (f : String → List String) : String → List String :=
+    (List.map (String.singleton c).intercalate) ∘ List.map f ∘ (·.split (· = c))
 
 end ToAdditive
 
--- TODO: Move
 namespace String 
 
-/- Check if a string is contained in another one. -/
+/-- Check if a string is contained in another one. -/
 partial def isSubstrOf (target str : String) : Bool :=
   loop "" 0
 where
@@ -73,7 +73,7 @@ def pathFromMathbinImport (mod : Name) : MetaM (Option FilePath) := do
 /- Given a theorem name and a file path, extract the proof text. -/
 def proofSource (thm : Name) (modulePath : FilePath) : MetaM (Option String) := do
   let mut res := "" 
-  for thmName in #[thm.toString, ToAdditive.reverseGuessName thm.toString] do 
+  for thmName in thm.toString :: ToAdditive.reverseGuessName thm.toString do 
     let keywords := 
       "(theorem|instance|class|attribute|section|namespace|def|variable)"
     let matchThmBody := 
@@ -92,4 +92,4 @@ appear. We take into account `ToAdditive` name translations. -/
 def filterUserPremises (premises : List Name) (proofSource : String) : List Name := 
   let appearsInProof (s : String) : Bool := s.isSubstrOf proofSource
   premises.filter (fun p => 
-    [p.toString, ToAdditive.reverseGuessName p.toString].any appearsInProof)
+    (p.toString :: ToAdditive.reverseGuessName p.toString).any appearsInProof)
