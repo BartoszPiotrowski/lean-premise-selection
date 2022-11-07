@@ -7,14 +7,11 @@ namespace PremiseSelection
 
 open Lean Lean.Elab Lean.Elab.Term Lean.Elab.Command Lean.Meta System
 
--- TODO: Testing. Move to StatementFeatures with correct representation.
-instance : ToJson StatementFeatures where 
-  toJson features := Id.run <| do
-    -- NOTE: Ignoring count for now.
-    let mut jsonFeatures : Array Json := #[]
-    for (⟨n1, n2⟩, _) in features.bigramCounts do
-      jsonFeatures := jsonFeatures.push s!"{n1}/{n2}"
-    return Json.arr jsonFeatures
+/-- Format used for training. All the features (arguments and theorems are
+put together in a list tageged with `T` for theorem or `H` for hypotheses). -/
+class ToInputFormat (α) where 
+  features : α → String 
+  labels   : α → String
 
 /-- Holds the name, features and premises of a single theorem. -/
 structure TheoremPremises where 
@@ -35,6 +32,17 @@ instance : ToJson TheoremPremises where
 instance : ToString TheoremPremises where 
   toString := Json.pretty ∘ toJson
 
+instance : ToInputFormat TheoremPremises where 
+  features tp := Id.run <| do
+    let mut result : Array String := #[]
+    for (⟨n1, n2⟩, _) in tp.features.bigramCounts do
+      result := result.push s!"T:{n1}/{n2}"
+    for arg in tp.argumentsFeatures do 
+      for (⟨n1, n2⟩, _) in arg.bigramCounts do
+        result := result.push s!"H:{n1}/{n2}"
+    return " ".intercalate result.data
+  labels tp := " ".intercalate (tp.premises.map toString)
+
 /-- Holds the premise data for each theorem in a module. -/
 structure ModulePremises where 
   module   : Name 
@@ -49,6 +57,12 @@ instance : ToJson ModulePremises where
 
 instance : ToString ModulePremises where 
   toString := Json.pretty ∘ toJson
+
+instance : ToInputFormat ModulePremises where 
+  features mp := "\n".intercalate (mp.theorems.map ToInputFormat.features).data
+  labels   mp := "\n".intercalate (mp.theorems.map ToInputFormat.labels).data
+
+section Core
 
 /-- Given a name `n`, if it qualifies as a premise, it returns `[n]`, otherwise 
 it returns the empty list. -/
@@ -80,10 +94,14 @@ private def extractPremisesFromConstantInfo
         let argType ← inferType arg 
         if (← inferType argType).isProp then
           let argFeats ← getStatementFeatures argType 
-          if ¬ argFeats.bigramCounts.isEmpty then 
+          if ! argFeats.bigramCounts.isEmpty then 
             argsFeats := argsFeats ++ [argFeats]
       pure $ TheoremPremises.mk n thmFeats argsFeats (← extractPremises v)
   | _ => pure none
+
+end Core 
+
+section Helpers
 
 /-- Same as `extractPremisesFromConstantInfo` but take an idenitfier and gets 
 its information from the environment. -/
@@ -120,8 +138,11 @@ def extractPremisesFromCtxAndSave (f : System.FilePath) : MetaM Unit := do
   let content ← Json.pretty <$> extractPremisesFromCtxJson 
   IO.FS.writeFile f content
 
+end Helpers 
+
+section FromImports
+
 /-- Extract and print premises from all the theorems in the imports. -/
--- TODO: Implement recursive.
 -- TODO: Save while visiting.
 def extractPremisesFromImports (recursive : Bool) 
   : MetaM (Array ModulePremises) := do 
@@ -132,9 +153,8 @@ def extractPremisesFromImports (recursive : Bool)
 
   let mut modulePremisesArray : Array ModulePremises := #[] 
   for (name, moduleData) in Array.zip moduleNamesArray moduleDataArray do
-    -- TODO: Recurse through modules if recursive.
-    let isMathbinImport := name.getRoot == `Mathbin ∨ name == `Mathbin
-    if imports.contains name ∧ isMathbinImport then 
+    let isMathbinImport := name.getRoot == `Mathbin || name == `Mathbin
+    if (recursive || imports.contains name) && isMathbinImport then 
       let mut theorems : Array TheoremPremises := #[]
       for cinfo in moduleData.constants do 
         if let some data ← extractPremisesFromConstantInfo cinfo then 
@@ -185,10 +205,12 @@ def extractUserPremisesFromImports (recursive : Bool)
 
   return moduleUserPremisesArray
 
+end FromImports
+
 section Commands 
 
-private def runAndPrint [ToString α] (f : MetaM α) : CommandElabM Unit :=
-  liftTermElabM <| do dbg_trace s!"{← f}"
+private def runAndPrint [ToJson α] (f : MetaM α) : CommandElabM Unit :=
+  liftTermElabM <| do dbg_trace s!"{Json.pretty <| toJson <| ← f}"
 
 elab "extract_premises_from_thm " id:term : command =>
   runAndPrint <| extractPremisesFromThm id
