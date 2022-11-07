@@ -55,6 +55,13 @@ structure StatementFeatures where
 instance : ForIn M (Multiset α) (α × Nat) :=
   show ForIn _ (RBMap _ _ _) _ by infer_instance
 
+instance : ToJson StatementFeatures where 
+  toJson features := Id.run <| do
+    let mut jsonFeatures : Array Json := #[]
+    for (⟨n1, n2⟩, _) in features.bigramCounts do
+      jsonFeatures := jsonFeatures.push s!"{n1}/{n2}"
+    return Json.arr jsonFeatures
+
 instance : EmptyCollection StatementFeatures := ⟨{}⟩
 instance : Append StatementFeatures where
   append x y := {
