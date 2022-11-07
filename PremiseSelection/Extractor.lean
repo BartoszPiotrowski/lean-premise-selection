@@ -20,6 +20,11 @@ structure TheoremPremises where
   argumentsFeatures : List StatementFeatures
   premises          : List Name 
 
+def TheoremPremises.filterPremises 
+  (tp : TheoremPremises) (f : List Name → MetaM (List Name)) 
+  : MetaM TheoremPremises := do 
+  return { tp with premises := ← f tp.premises } 
+
 instance : ToJson TheoremPremises where 
   toJson data := 
     Json.mkObj [
@@ -142,9 +147,30 @@ end Helpers
 
 section FromImports
 
-/-- Extract and print premises from all the theorems in the imports. -/
+/-- -/
 -- TODO: Save while visiting.
-def extractPremisesFromImports (recursive : Bool) 
+def extractPremisesFromModule (name : Name) (moduleData : ModuleData) 
+  (user : Bool := false) (path : Option FilePath := none) 
+  : MetaM ModulePremises := do 
+  let mut filter : Name → List Name → MetaM (List Name) := fun _ ns => pure ns
+  if user then 
+    if let some modulePath ← pathFromMathbinImport name then 
+      -- If user premises, then create a filter looking at proof source.
+      filter := fun thmName premises => do
+        if let some source ← proofSource thmName modulePath then
+          return filterUserPremises premises source
+        else return premises
+        
+  let mut theorems : Array TheoremPremises := #[]
+  for cinfo in moduleData.constants do 
+    if let some data ← extractPremisesFromConstantInfo cinfo then 
+      let filteredData ← data.filterPremises (filter data.name)
+      theorems := theorems.push filteredData
+  return ModulePremises.mk name theorems
+
+/-- Extract and print premises from all the theorems in the imports. -/
+def extractPremisesFromImports 
+  (recursive : Bool) (user : Bool := false) (path : Option FilePath := none)
   : MetaM (Array ModulePremises) := do 
   let env ← getEnv
   let imports := env.imports.map (·.module)
@@ -155,11 +181,7 @@ def extractPremisesFromImports (recursive : Bool)
   for (name, moduleData) in Array.zip moduleNamesArray moduleDataArray do
     let isMathbinImport := name.getRoot == `Mathbin || name == `Mathbin
     if (recursive || imports.contains name) && isMathbinImport then 
-      let mut theorems : Array TheoremPremises := #[]
-      for cinfo in moduleData.constants do 
-        if let some data ← extractPremisesFromConstantInfo cinfo then 
-          theorems := theorems.push data
-      let modulePremisesData := ModulePremises.mk name theorems
+      let modulePremisesData ← extractPremisesFromModule name moduleData user path
       modulePremisesArray := modulePremisesArray.push modulePremisesData
 
   return modulePremisesArray
@@ -182,7 +204,8 @@ def extractPremisesFromAllImportsAndSave (f : FilePath) : MetaM Unit := do
 
 /-- Call `extractPremisesFromImports`, then look at the source files and filter 
 the theorems to only obtain the ones typed by the user. -/
-def extractUserPremisesFromImports (recursive : Bool) 
+def extractUserPremisesFromImports 
+  (recursive : Bool) (path : Option FilePath := none)
   : MetaM (Array ModulePremises) := do 
   let mut moduleUserPremisesArray : Array ModulePremises := #[]
   for modulePremisesData in ← extractPremisesFromImports recursive do 
