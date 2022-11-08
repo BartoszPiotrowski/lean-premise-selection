@@ -24,6 +24,10 @@ lean_exe LoadAndPredict where
 lean_exe KnnPredict where
   root := `Scripts.KnnPredict
 
+@[defaultTarget]
+lean_exe ExtractPremises where
+  root := `Scripts.ExtractPremises
+
 def npmCmd : String := "npm"
 
 target packageLock : FilePath := do
