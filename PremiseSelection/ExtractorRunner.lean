@@ -28,7 +28,11 @@ unsafe def main (args : List String) : IO Unit := do
     -- TODO: Just for testing.
     moduleNames := #[`Mathbin.Algebra.Abs]
 
-  withImportModules (moduleNames.data.map ({ module := · })) {} 0 fun env => do 
-    let m := extractPremisesFromImportsToFiles false user labelsPath featuresPath
-    let _ ← m.toIO { fileName := "", fileMap := default, maxHeartbeats := 100000000000000 } { env := env }
-    pure ()
+  for i in List.range (moduleNames.size.div 100) do
+    let chunk := moduleNames.extract (i.mul 100) ((i.mul 100).add 100)
+    withImportModules (chunk.data.map ({ module := · })) {} 0 fun env => do 
+      let labelsPath  := labelsPath ++ s!"_{i}"
+      let featuresPath := featuresPath ++ s!"_{i}"
+      let m := extractPremisesFromImportsToFiles false user labelsPath featuresPath
+      let _ ← m.toIO { fileName := "", fileMap := default, maxHeartbeats := 100000000000000 } { env := env }
+  

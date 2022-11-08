@@ -158,7 +158,7 @@ private def extractPremisesFromModule
        "_proof_".isSubstrOf nameStr || 
        "_match_".isSubstrOf nameStr then 
       continue
-    dbg_trace s!"Constant: {cinfo.name}."
+    --dbg_trace s!"Constant: {cinfo.name}."
     if let some data ← extractPremisesFromConstantInfo cinfo then 
       let filteredPremises ← filter data.name data.premises
       let filteredData := { data with premises := filteredPremises }
@@ -210,8 +210,8 @@ def extractPremisesFromImportsToFiles
   : MetaM Unit := do 
   dbg_trace "Extracting premises from imports to {labelsPath}, {featuresPath}."
   
-  let labelsHandle ← Handle.mk labelsPath Mode.write false
-  let featuresHandle ← Handle.mk featuresPath Mode.write false
+  let labelsHandle ← Handle.mk labelsPath Mode.append false
+  let featuresHandle ← Handle.mk featuresPath Mode.append false
 
   let insert : Name → TheoremPremises → IO Unit := fun _ tp => do
     labelsHandle.putStrLn (ToFeaturesLabels.labels tp)
@@ -223,14 +223,17 @@ def extractPremisesFromImportsToFiles
   let moduleDataArray := env.header.moduleData
 
   -- Write for every module, to avoid having to keep all the data in memory.
+  let mut count := 0
   for (moduleName, moduleData) in Array.zip moduleNamesArray moduleDataArray do
     let isMathbinImport := 
       moduleName.getRoot == `Mathbin || moduleName == `Mathbin
     if (recursive || imports.contains moduleName) && isMathbinImport then 
+      count := count + 1
       let extractFn := 
         extractPremisesFromModule (insert moduleName) moduleName moduleData user
       let (_, moduleWriteAction) ← WriterT.run <| extractFn
       moduleWriteAction
+      dbg_trace s!"count = {count}."
           
   pure ()
 
