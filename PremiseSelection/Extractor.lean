@@ -60,8 +60,10 @@ instance : ToString ModulePremises where
   toString := Json.pretty ∘ toJson
 
 instance : ToFeaturesLabels ModulePremises where 
-  features mp := "\n".intercalate (mp.theorems.map ToFeaturesLabels.features).data
-  labels   mp := "\n".intercalate (mp.theorems.map ToFeaturesLabels.labels).data
+  features mp := 
+    "\n".intercalate (mp.theorems.map ToFeaturesLabels.features).data
+  labels   mp := 
+    "\n".intercalate (mp.theorems.map ToFeaturesLabels.labels).data
 
 section CoreExtractor
 
@@ -156,6 +158,7 @@ private def extractPremisesFromModule
 open IO IO.FS
 
 instance : EmptyCollection (IO Unit) := ⟨pure ()⟩
+
 instance : Append (IO Unit) := ⟨fun f g => f *> g⟩
 
 /-- -/
@@ -195,23 +198,34 @@ def extractPremisesFromModuleToStructure
 private def extractPremisesFromImports 
   {ω : Type} [EmptyCollection ω] [Append ω] (insert : Name → TheoremPremises → ω)
   (recursive : Bool) (user : Bool := false)
-  : WriterT ω MetaM Unit := do 
+  : MetaM ω := do 
   let env ← getEnv
   let imports := env.imports.map (·.module)
   let moduleNamesArray := env.header.moduleNames
   let moduleDataArray := env.header.moduleData
 
+  dbg_trace "Extracting premises from imports"
+  
+  -- Write for every module, to avoid having to keep all the data in memory.
+  let mut res : ω := {}
   for (moduleName, moduleData) in Array.zip moduleNamesArray moduleDataArray do
-    let isMathbinImport := moduleName.getRoot == `Mathbin || moduleName == `Mathbin
+    let isMathbinImport := 
+      moduleName.getRoot == `Mathbin || moduleName == `Mathbin
     if (recursive || imports.contains moduleName) && isMathbinImport then 
-      extractPremisesFromModule (insert moduleName) moduleName moduleData user
-      
-  pure ()
+      dbg_trace s!"Extracting premises from {moduleName}."
+      let extractFn := 
+        extractPremisesFromModule (insert moduleName) moduleName moduleData user
+      let (_, moduleRes) ← WriterT.run <| extractFn
+      res := res ++ moduleRes
+          
+  pure res
 
 /-- -/
 def extractPremisesFromImportsToFiles 
   (recursive : Bool) (user : Bool := false) (labelsPath featuresPath : FilePath) 
   : MetaM Unit := do 
+  dbg_trace "Extracting premises from imports to files."
+
   let labelsHandle ← Handle.mk labelsPath Mode.write false
   let featuresHandle ← Handle.mk featuresPath Mode.write false
 
@@ -219,9 +233,8 @@ def extractPremisesFromImportsToFiles
     labelsHandle.putStrLn (ToFeaturesLabels.labels tp)
     featuresHandle.putStrLn (ToFeaturesLabels.features tp)
   
-  let (_, resultHandler) ← 
-    WriterT.run <| extractPremisesFromImports insert recursive user
-  resultHandler
+  let evalIO ← extractPremisesFromImports insert recursive user
+  evalIO
 
 /-- -/
 def extractPremisesFromImportsToStructure 
@@ -230,9 +243,7 @@ def extractPremisesFromImportsToStructure
   let insert : Name → TheoremPremises → Array ModulePremises := 
     fun moduleName tp => #[ModulePremises.mk moduleName #[tp]]
   -- TODO: Append here won't merge two ModulePremises with the same module name.
-  let (_, result) ← 
-    WriterT.run <| extractPremisesFromImports insert recursive user
-  pure result
+  extractPremisesFromImports insert recursive user
 
 end FromImports
 
@@ -284,6 +295,17 @@ elab "extract_user_premises_from_imports" : command =>
 
 elab "extract_user_premises_from_all_imports" : command =>
   runAndPrint <| extractUserPremisesFromAllImportsJson
+
+syntax (name := extract_to_files) 
+  "extract_to_files l:" str " f:" str : command
+
+@[commandElab «extract_to_files»]
+unsafe def elabExtractToFiles : CommandElab
+| `(extract_to_files l:$lp f:$fp) => liftTermElabM <| do
+  let labelsPath ← evalTerm String (mkConst `String) lp.raw
+  let featuresPath ← evalTerm String (mkConst `String) fp.raw
+  extractPremisesFromImportsToFiles (recursive := true) (user := true) labelsPath featuresPath
+| _ => throwUnsupportedSyntax
 
 end Commands 
 
