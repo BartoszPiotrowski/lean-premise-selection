@@ -150,7 +150,15 @@ private def extractPremisesFromModule
         else return premises
   -- Go through all theorems in the module, filter premises and write.
   for cinfo in moduleData.constants do 
-    dbg_trace s!"Const: {cinfo.name}."
+    -- Ignore non-user definitions.
+    let nameStr := toString cinfo.name
+    if nameStr.contains '!' || 
+       nameStr.contains '«' || 
+       "_eqn_".isSubstrOf nameStr ||
+       "_proof_".isSubstrOf nameStr || 
+       "_match_".isSubstrOf nameStr then 
+      continue
+    dbg_trace s!"Constant: {cinfo.name}."
     if let some data ← extractPremisesFromConstantInfo cinfo then 
       let filteredPremises ← filter data.name data.premises
       let filteredData := { data with premises := filteredPremises }
