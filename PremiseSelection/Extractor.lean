@@ -138,6 +138,7 @@ private def extractPremisesFromModule
   {ω : Type} [EmptyCollection ω] [Append ω] (insert : TheoremPremises → ω)
   (moduleName : Name) (moduleData : ModuleData) (user : Bool := false)
   : WriterT ω MetaM Unit := do
+  dbg_trace s!"Extracting premises from {moduleName}."
   let mut filter : Name → List Name → MetaM (List Name) := fun _ => pure
   if user then 
     if let some modulePath ← pathFromMathbinImport moduleName then 
@@ -149,6 +150,7 @@ private def extractPremisesFromModule
         else return premises
   -- Go through all theorems in the module, filter premises and write.
   for cinfo in moduleData.constants do 
+    dbg_trace s!"Const: {cinfo.name}."
     if let some data ← extractPremisesFromConstantInfo cinfo then 
       let filteredPremises ← filter data.name data.premises
       let filteredData := { data with premises := filteredPremises }
@@ -194,38 +196,12 @@ def extractPremisesFromModuleToStructure
     WriterT.run <| extractPremisesFromModule insert moduleName moduleData user
   pure result
 
-/-- Extract and print premises from all the theorems in the imports. -/
-private def extractPremisesFromImports 
-  {ω : Type} [EmptyCollection ω] [Append ω] (insert : Name → TheoremPremises → ω)
-  (recursive : Bool) (user : Bool := false)
-  : MetaM ω := do 
-  let env ← getEnv
-  let imports := env.imports.map (·.module)
-  let moduleNamesArray := env.header.moduleNames
-  let moduleDataArray := env.header.moduleData
-
-  dbg_trace "Extracting premises from imports"
-  
-  -- Write for every module, to avoid having to keep all the data in memory.
-  let mut res : ω := {}
-  for (moduleName, moduleData) in Array.zip moduleNamesArray moduleDataArray do
-    let isMathbinImport := 
-      moduleName.getRoot == `Mathbin || moduleName == `Mathbin
-    if (recursive || imports.contains moduleName) && isMathbinImport then 
-      dbg_trace s!"Extracting premises from {moduleName}."
-      let extractFn := 
-        extractPremisesFromModule (insert moduleName) moduleName moduleData user
-      let (_, moduleRes) ← WriterT.run <| extractFn
-      res := res ++ moduleRes
-          
-  pure res
-
 /-- -/
 def extractPremisesFromImportsToFiles 
   (recursive : Bool) (user : Bool := false) (labelsPath featuresPath : FilePath) 
   : MetaM Unit := do 
-  dbg_trace "Extracting premises from imports to files."
-
+  dbg_trace "Extracting premises from imports to {labelsPath}, {featuresPath}."
+  
   let labelsHandle ← Handle.mk labelsPath Mode.write false
   let featuresHandle ← Handle.mk featuresPath Mode.write false
 
@@ -233,17 +209,22 @@ def extractPremisesFromImportsToFiles
     labelsHandle.putStrLn (ToFeaturesLabels.labels tp)
     featuresHandle.putStrLn (ToFeaturesLabels.features tp)
   
-  let evalIO ← extractPremisesFromImports insert recursive user
-  evalIO
+  let env ← getEnv
+  let imports := env.imports.map (·.module)
+  let moduleNamesArray := env.header.moduleNames
+  let moduleDataArray := env.header.moduleData
 
-/-- -/
-def extractPremisesFromImportsToStructure 
-  (recursive : Bool) (user : Bool := false)
-  : MetaM (Array ModulePremises) := do 
-  let insert : Name → TheoremPremises → Array ModulePremises := 
-    fun moduleName tp => #[ModulePremises.mk moduleName #[tp]]
-  -- TODO: Append here won't merge two ModulePremises with the same module name.
-  extractPremisesFromImports insert recursive user
+  -- Write for every module, to avoid having to keep all the data in memory.
+  for (moduleName, moduleData) in Array.zip moduleNamesArray moduleDataArray do
+    let isMathbinImport := 
+      moduleName.getRoot == `Mathbin || moduleName == `Mathbin
+    if (recursive || imports.contains moduleName) && isMathbinImport then 
+      let extractFn := 
+        extractPremisesFromModule (insert moduleName) moduleName moduleData user
+      let (_, moduleWriteAction) ← WriterT.run <| extractFn
+      moduleWriteAction
+          
+  pure ()
 
 end FromImports
 
@@ -255,21 +236,21 @@ def extractPremisesFromCtxJson : MetaM Json :=
 def extractPremisesFromThmJson (stx : Syntax) : MetaM Json := 
   toJson <$> extractPremisesFromThm stx
 
-def extractPremisesFromImportsJson : MetaM Json := 
-  toJson <$>  
-  extractPremisesFromImportsToStructure (recursive := false)
+-- def extractPremisesFromImportsJson : MetaM Json := 
+--   toJson <$>  
+--   extractPremisesFromImportsToStructure (recursive := false)
 
-def extractPremisesFromAllImportsJson : MetaM Json := 
-  toJson <$> 
-  extractPremisesFromImportsToStructure (recursive := true)
+-- def extractPremisesFromAllImportsJson : MetaM Json := 
+--   toJson <$> 
+--   extractPremisesFromImportsToStructure (recursive := true)
 
-def extractUserPremisesFromImportsJson : MetaM Json := 
-  toJson <$>  
-  extractPremisesFromImportsToStructure (recursive := false) (user := true)
+-- def extractUserPremisesFromImportsJson : MetaM Json := 
+--   toJson <$>  
+--   extractPremisesFromImportsToStructure (recursive := false) (user := true)
 
-def extractUserPremisesFromAllImportsJson : MetaM Json := 
-  toJson <$> 
-  extractPremisesFromImportsToStructure (recursive := true) (user := true)
+-- def extractUserPremisesFromAllImportsJson : MetaM Json := 
+--   toJson <$> 
+--   extractPremisesFromImportsToStructure (recursive := true) (user := true)
 
 end Json
 
@@ -284,17 +265,17 @@ elab "extract_premises_from_thm " id:term : command =>
 elab "extract_premises_from_ctx" : command =>
   runAndPrint <| extractPremisesFromCtx
 
-elab "extract_premises_from_imports" : command =>
-  runAndPrint <| extractPremisesFromImportsJson
+-- elab "extract_premises_from_imports" : command =>
+--   runAndPrint <| extractPremisesFromImportsJson
 
-elab "extract_premises_from_all_imports" : command =>
-  runAndPrint <| extractPremisesFromAllImportsJson
+-- elab "extract_premises_from_all_imports" : command =>
+--   runAndPrint <| extractPremisesFromAllImportsJson
 
-elab "extract_user_premises_from_imports" : command =>
-  runAndPrint <| extractUserPremisesFromImportsJson
+-- elab "extract_user_premises_from_imports" : command =>
+--   runAndPrint <| extractUserPremisesFromImportsJson
 
-elab "extract_user_premises_from_all_imports" : command =>
-  runAndPrint <| extractUserPremisesFromAllImportsJson
+-- elab "extract_user_premises_from_all_imports" : command =>
+--   runAndPrint <| extractUserPremisesFromAllImportsJson
 
 syntax (name := extract_to_files) 
   "extract_to_files l:" str " f:" str : command
