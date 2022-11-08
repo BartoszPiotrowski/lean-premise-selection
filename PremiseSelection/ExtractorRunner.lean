@@ -30,5 +30,5 @@ unsafe def main (args : List String) : IO Unit := do
 
   withImportModules (moduleNames.data.map ({ module := · })) {} 0 fun env => do 
     let m := extractPremisesFromImportsToFiles false user labelsPath featuresPath
-    let _ ← m.toIO { fileName := "", fileMap := default } { env := env }
+    let _ ← m.toIO { fileName := "", fileMap := default, maxHeartbeats := 100000000000000 } { env := env }
     pure ()
