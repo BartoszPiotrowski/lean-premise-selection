@@ -1,6 +1,16 @@
-import Mathbin
+import Lean
+import PremiseSelection 
 
-import PremiseSelection.Extractor 
+open Lean Lean.Meta 
 
-set_option maxHeartbeats 10000000000000 in
-extract_to_files l:"data/test.labels" f:"data/test.features"
+open PremiseSelection
+
+set_option maxHeartbeats 10000000000
+
+unsafe def main (args : List String) : IO Unit := do
+  let labelsPath   := args.get! 0
+  let featuresPath := args.get! 1
+  withImportModules [{ module := `Mathbin }] {} 0 fun env => do 
+    let m := extractPremisesFromImportsToFiles true true labelsPath featuresPath
+    let _ ← m.toIO { fileName := "", fileMap := default } { env := env }
+    pure ()
