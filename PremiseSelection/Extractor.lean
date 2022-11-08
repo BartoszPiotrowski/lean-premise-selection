@@ -20,11 +20,6 @@ structure TheoremPremises where
   argumentsFeatures : List StatementFeatures
   premises          : List Name 
 
-def TheoremPremises.filterPremises 
-  (tp : TheoremPremises) (f : List Name → MetaM (List Name)) 
-  : MetaM TheoremPremises := do 
-  return { tp with premises := ← f tp.premises } 
-
 instance : ToJson TheoremPremises where 
   toJson data := 
     Json.mkObj [
@@ -164,7 +159,8 @@ def extractPremisesFromModule (name : Name) (moduleData : ModuleData)
   let mut theorems : Array TheoremPremises := #[]
   for cinfo in moduleData.constants do 
     if let some data ← extractPremisesFromConstantInfo cinfo then 
-      let filteredData ← data.filterPremises (filter data.name)
+      let filteredPremises ← filter data.name data.premises
+      let filteredData := { data with premises := filteredPremises }
       theorems := theorems.push filteredData
   return ModulePremises.mk name theorems
 
