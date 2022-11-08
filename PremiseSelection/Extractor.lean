@@ -10,7 +10,7 @@ open Lean Lean.Elab Lean.Elab.Term Lean.Elab.Command Lean.Meta System
 /-- Format used for training. All the features (arguments and theorem) should be
 put together in a sequence tageged with `T` for theorem or `H` for hypotheses. 
 Premises are simply concatenated. -/
-class ToInputFormat (α) where 
+class ToFeaturesLabels (α) where 
   features : α → String 
   labels   : α → String
 
@@ -33,7 +33,7 @@ instance : ToJson TheoremPremises where
 instance : ToString TheoremPremises where 
   toString := Json.pretty ∘ toJson
 
-instance : ToInputFormat TheoremPremises where 
+instance : ToFeaturesLabels TheoremPremises where 
   features tp := Id.run <| do
     let mut result : Array String := #[]
     for (⟨n1, n2⟩, _) in tp.features.bigramCounts do
@@ -59,9 +59,9 @@ instance : ToJson ModulePremises where
 instance : ToString ModulePremises where 
   toString := Json.pretty ∘ toJson
 
-instance : ToInputFormat ModulePremises where 
-  features mp := "\n".intercalate (mp.theorems.map ToInputFormat.features).data
-  labels   mp := "\n".intercalate (mp.theorems.map ToInputFormat.labels).data
+instance : ToFeaturesLabels ModulePremises where 
+  features mp := "\n".intercalate (mp.theorems.map ToFeaturesLabels.features).data
+  labels   mp := "\n".intercalate (mp.theorems.map ToFeaturesLabels.labels).data
 
 section CoreExtractor
 
@@ -119,9 +119,6 @@ def extractPremisesFromThm (stx : Syntax) : MetaM (Array TheoremPremises) := do
       thmData := thmData.push data
   return thmData 
 
-def extractPremisesFromThmJson (stx : Syntax) : MetaM Json := 
-  toJson <$> extractPremisesFromThm stx
-
 /-- Extract and print premises from all the theorems in the context. -/
 def extractPremisesFromCtx : MetaM (Array TheoremPremises) := do 
     let mut ctxData : Array TheoremPremises := #[]
@@ -129,9 +126,6 @@ def extractPremisesFromCtx : MetaM (Array TheoremPremises) := do
       if let some data ← extractPremisesFromConstantInfo cinfo then
         ctxData := ctxData.push data
     return ctxData
-
-def extractPremisesFromCtxJson : MetaM Json := 
-  toJson <$> extractPremisesFromCtx
 
 end Variants 
 
@@ -173,8 +167,8 @@ def extractPremisesFromModuleToFiles
   let featuresHandle ← Handle.mk featuresPath Mode.write false
 
   let insert : TheoremPremises → IO Unit := fun data => do
-    labelsHandle.putStrLn (ToInputFormat.labels data)
-    featuresHandle.putStrLn (ToInputFormat.features data)
+    labelsHandle.putStrLn (ToFeaturesLabels.labels data)
+    featuresHandle.putStrLn (ToFeaturesLabels.features data)
 
   let (_, resultHandler) ← 
     WriterT.run <| extractPremisesFromModule insert moduleName moduleData user
@@ -222,8 +216,8 @@ def extractPremisesFromImportsToFiles
   let featuresHandle ← Handle.mk featuresPath Mode.write false
 
   let insert : Name → TheoremPremises → IO Unit := fun _ tp => do
-    labelsHandle.putStrLn (ToInputFormat.labels tp)
-    featuresHandle.putStrLn (ToInputFormat.features tp)
+    labelsHandle.putStrLn (ToFeaturesLabels.labels tp)
+    featuresHandle.putStrLn (ToFeaturesLabels.features tp)
   
   let (_, resultHandler) ← 
     WriterT.run <| extractPremisesFromImports insert recursive user
@@ -240,7 +234,15 @@ def extractPremisesFromImportsToStructure
     WriterT.run <| extractPremisesFromImports insert recursive user
   pure result
 
+end FromImports
+
 section Json
+
+def extractPremisesFromCtxJson : MetaM Json := 
+  toJson <$> extractPremisesFromCtx
+
+def extractPremisesFromThmJson (stx : Syntax) : MetaM Json := 
+  toJson <$> extractPremisesFromThm stx
 
 def extractPremisesFromImportsJson : MetaM Json := 
   toJson <$>  
@@ -259,8 +261,6 @@ def extractUserPremisesFromAllImportsJson : MetaM Json :=
   extractPremisesFromImportsToStructure (recursive := true) (user := true)
 
 end Json
-
-end FromImports
 
 section Commands 
 
