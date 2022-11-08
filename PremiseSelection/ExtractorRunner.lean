@@ -17,15 +17,13 @@ unsafe def main (args : List String) : IO Unit := do
 
   let mut moduleNames := #[]
   if all then 
-    let mathbinAll := "lean_packages/mathlib3port/Mathbin/All.lean"
-    for moduleImportStr in ← IO.FS.lines mathbinAll do 
-      let moduleImportStr := moduleImportStr.trim
-      if moduleImportStr.startsWith "import" then
-        let moduleNameStr := moduleImportStr.drop 7
-        if moduleNameStr.startsWith "Mathbin" then
-          let decopmosedNameStr := (moduleNameStr.splitOn ".").map Name.mkSimple
-          let moduleName := decopmosedNameStr.foldl Name.append Lean.Name.anonymous
-          moduleNames := moduleNames.push moduleName
+    let selectedModules := "data/modules"
+    for moduleNameStr in ← IO.FS.lines selectedModules do 
+      let moduleNameStr := moduleNameStr.trim
+      if moduleNameStr.startsWith "Mathbin" then
+        let decopmosedNameStr := (moduleNameStr.splitOn ".").map Name.mkSimple
+        let moduleName := decopmosedNameStr.foldl Name.append Lean.Name.anonymous
+        moduleNames := moduleNames.push moduleName
   else 
     -- TODO: Just for testing.
     moduleNames := #[`Mathbin.Algebra.Abs]
