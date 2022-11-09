@@ -248,22 +248,6 @@ def extractPremisesFromCtxJson : MetaM Json :=
 def extractPremisesFromThmJson (stx : Syntax) : MetaM Json := 
   toJson <$> extractPremisesFromThm stx
 
--- def extractPremisesFromImportsJson : MetaM Json := 
---   toJson <$>  
---   extractPremisesFromImportsToStructure (recursive := false)
-
--- def extractPremisesFromAllImportsJson : MetaM Json := 
---   toJson <$> 
---   extractPremisesFromImportsToStructure (recursive := true)
-
--- def extractUserPremisesFromImportsJson : MetaM Json := 
---   toJson <$>  
---   extractPremisesFromImportsToStructure (recursive := false) (user := true)
-
--- def extractUserPremisesFromAllImportsJson : MetaM Json := 
---   toJson <$> 
---   extractPremisesFromImportsToStructure (recursive := true) (user := true)
-
 end Json
 
 section Commands 
@@ -277,24 +261,12 @@ elab "extract_premises_from_thm " id:term : command =>
 elab "extract_premises_from_ctx" : command =>
   runAndPrint <| extractPremisesFromCtx
 
--- elab "extract_premises_from_imports" : command =>
---   runAndPrint <| extractPremisesFromImportsJson
+syntax (name := extract_premises_to_files) 
+  "extract_premises_to_files l:" str " f:" str : command
 
--- elab "extract_premises_from_all_imports" : command =>
---   runAndPrint <| extractPremisesFromAllImportsJson
-
--- elab "extract_user_premises_from_imports" : command =>
---   runAndPrint <| extractUserPremisesFromImportsJson
-
--- elab "extract_user_premises_from_all_imports" : command =>
---   runAndPrint <| extractUserPremisesFromAllImportsJson
-
-syntax (name := extract_to_files) 
-  "extract_to_files l:" str " f:" str : command
-
-@[commandElab «extract_to_files»]
-unsafe def elabExtractToFiles : CommandElab
-| `(extract_to_files l:$lp f:$fp) => liftTermElabM <| do
+@[commandElab «extract_premises_to_files»]
+unsafe def elabExtractPremisesToFiles : CommandElab
+| `(extract_premises_to_files l:$lp f:$fp) => liftTermElabM <| do
   let labelsPath ← evalTerm String (mkConst `String) lp.raw
   let featuresPath ← evalTerm String (mkConst `String) fp.raw
   extractPremisesFromImportsToFiles (user := true) labelsPath featuresPath
