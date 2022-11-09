@@ -133,11 +133,13 @@ end Variants
 
 section FromImports
 
+open IO IO.FS
+
 /-- -/
 private def extractPremisesFromModule 
-  {ω : Type} [EmptyCollection ω] [Append ω] (insert : TheoremPremises → ω)
+  (insert : TheoremPremises → IO Unit)
   (moduleName : Name) (moduleData : ModuleData) (user : Bool := false)
-  : WriterT ω MetaM Unit := do
+  : MetaM Unit := do
   dbg_trace s!"Extracting premises from {moduleName}."
   let mut filter : Name → List Name → MetaM (List Name) := fun _ => pure
   if user then 
@@ -162,14 +164,8 @@ private def extractPremisesFromModule
     if let some data ← extractPremisesFromConstantInfo cinfo then 
       let filteredPremises ← filter data.name data.premises
       let filteredData := { data with premises := filteredPremises }
-      tell (insert filteredData)
+      insert filteredData
   pure ()
-
-open IO IO.FS
-
-instance : EmptyCollection (IO Unit) := ⟨pure ()⟩
-
-instance : Append (IO Unit) := ⟨fun f g => f *> g⟩
 
 /-- -/
 def extractPremisesFromModuleToFiles 
@@ -183,26 +179,7 @@ def extractPremisesFromModuleToFiles
     labelsHandle.putStrLn (ToFeaturesLabels.labels data)
     featuresHandle.putStrLn (ToFeaturesLabels.features data)
 
-  let (_, resultHandler) ← 
-    WriterT.run <| extractPremisesFromModule insert moduleName moduleData user
-  resultHandler
-
-/-- -/
-def extractPremisesFromModuleToStructure
-  (moduleName : Name) (moduleData : ModuleData) (user : Bool := false) 
-  : MetaM ModulePremises := do 
-  let insert : TheoremPremises → ModulePremises := fun data => 
-    { module := moduleName, theorems := #[data] }
-  
-  have : EmptyCollection ModulePremises := 
-    ⟨{ module := moduleName, theorems := #[] }⟩
-  have : Append ModulePremises := 
-    ⟨fun m1 m2 => 
-      { module := moduleName, theorems := m1.theorems ++ m2.theorems }⟩
-
-  let (_, result) ← 
-    WriterT.run <| extractPremisesFromModule insert moduleName moduleData user
-  pure result
+  extractPremisesFromModule insert moduleName moduleData user
 
 /-- -/
 def extractPremisesFromImportsToFiles 
@@ -230,10 +207,7 @@ def extractPremisesFromImportsToFiles
       moduleName.getRoot == `Mathbin || moduleName == `Mathbin
     if imports.contains moduleName && isMathbinImport then 
       count := count + 1
-      let extractFn := 
-        extractPremisesFromModule (insert moduleName) moduleName moduleData user
-      let (_, moduleWriteAction) ← WriterT.run <| extractFn
-      moduleWriteAction
+      extractPremisesFromModule (insert moduleName) moduleName moduleData user
       dbg_trace s!"count = {count}."
           
   pure ()
