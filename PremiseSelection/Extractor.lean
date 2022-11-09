@@ -44,27 +44,6 @@ instance : ToFeaturesLabels TheoremPremises where
     return " ".intercalate result.data
   labels tp := " ".intercalate (tp.premises.map toString)
 
-/-- Holds the premise data for each theorem in a module. -/
-structure ModulePremises where 
-  module   : Name 
-  theorems : Array TheoremPremises 
-
-instance : ToJson ModulePremises where 
-  toJson data := 
-    Json.mkObj [
-      ("module",   toJson data.module),
-      ("theorems", toJson data.theorems)
-    ]
-
-instance : ToString ModulePremises where 
-  toString := Json.pretty ∘ toJson
-
-instance : ToFeaturesLabels ModulePremises where 
-  features mp := 
-    "\n".intercalate (mp.theorems.map ToFeaturesLabels.features).data
-  labels   mp := 
-    "\n".intercalate (mp.theorems.map ToFeaturesLabels.labels).data
-
 section CoreExtractor
 
 /-- Given a name `n`, if it qualifies as a premise, it returns `[n]`, otherwise 
