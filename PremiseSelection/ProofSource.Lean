@@ -45,7 +45,8 @@ def reverseGuessName : String → List String :=
     List.map "_".intercalate (reverseGuessNameDict false (s.splitOn "_"))
 where 
   mapTokensList (c : Char) (f : String → List String) : String → List String :=
-    (List.map (String.singleton c).intercalate) ∘ List.map f ∘ (·.split (· = c))
+    let c := String.singleton c
+    List.map c.intercalate ∘ List.map f ∘ (·.splitOn c)
 
 end ToAdditive
 
