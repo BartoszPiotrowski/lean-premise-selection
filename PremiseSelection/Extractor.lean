@@ -7,14 +7,12 @@ namespace PremiseSelection
 
 open Lean Lean.Elab Lean.Elab.Term Lean.Elab.Command Lean.Meta System
 
--- TODO: Testing. Move to StatementFeatures with correct representation.
-instance : ToJson StatementFeatures where 
-  toJson features := Id.run <| do
-    -- NOTE: Ignoring count for now.
-    let mut jsonFeatures : Array Json := #[]
-    for (⟨n1, n2⟩, _) in features.bigramCounts do
-      jsonFeatures := jsonFeatures.push s!"{n1}/{n2}"
-    return Json.arr jsonFeatures
+/-- Format used for training. All the features (arguments and theorem) should be
+put together in a sequence tageged with `T` for theorem or `H` for hypotheses. 
+Premises are simply concatenated. -/
+class ToFeaturesLabels (α) where 
+  features : α → String 
+  labels   : α → String
 
 /-- Holds the name, features and premises of a single theorem. -/
 structure TheoremPremises where 
@@ -35,20 +33,18 @@ instance : ToJson TheoremPremises where
 instance : ToString TheoremPremises where 
   toString := Json.pretty ∘ toJson
 
-/-- Holds the premise data for each theorem in a module. -/
-structure ModulePremises where 
-  module   : Name 
-  theorems : Array TheoremPremises 
+instance : ToFeaturesLabels TheoremPremises where 
+  features tp := Id.run <| do
+    let mut result : Array String := #[]
+    for (⟨n1, n2⟩, _) in tp.features.bigramCounts do
+      result := result.push s!"T:{n1}/{n2}"
+    for arg in tp.argumentsFeatures do 
+      for (⟨n1, n2⟩, _) in arg.bigramCounts do
+        result := result.push s!"H:{n1}/{n2}"
+    return " ".intercalate result.data
+  labels tp := " ".intercalate (tp.premises.map toString)
 
-instance : ToJson ModulePremises where 
-  toJson data := 
-    Json.mkObj [
-      ("module",   toJson data.module),
-      ("theorems", toJson data.theorems)
-    ]
-
-instance : ToString ModulePremises where 
-  toString := Json.pretty ∘ toJson
+section CoreExtractor
 
 /-- Given a name `n`, if it qualifies as a premise, it returns `[n]`, otherwise 
 it returns the empty list. -/
@@ -73,17 +69,21 @@ in the proof and constructs an object of type `PremisesData` with all. -/
 private def extractPremisesFromConstantInfo 
   : ConstantInfo → MetaM (Option TheoremPremises)
   | ConstantInfo.thmInfo { name := n, type := ty, value := v, .. } => do
-    forallTelescope ty $ fun args thm => do
+    forallTelescope ty <| fun args thm => do
       let thmFeats ← getStatementFeatures thm
       let mut argsFeats := []
       for arg in args do
         let argType ← inferType arg 
         if (← inferType argType).isProp then
           let argFeats ← getStatementFeatures argType 
-          if ¬ argFeats.bigramCounts.isEmpty then 
+          if ! argFeats.bigramCounts.isEmpty then 
             argsFeats := argsFeats ++ [argFeats]
-      pure $ TheoremPremises.mk n thmFeats argsFeats (← extractPremises v)
+      pure <| TheoremPremises.mk n thmFeats argsFeats (← extractPremises v)
   | _ => pure none
+
+end CoreExtractor 
+
+section Variants
 
 /-- Same as `extractPremisesFromConstantInfo` but take an idenitfier and gets 
 its information from the environment. -/
@@ -98,11 +98,7 @@ def extractPremisesFromThm (stx : Syntax) : MetaM (Array TheoremPremises) := do
   for n in ← resolveGlobalConst stx do 
     if let some data ← extractPremisesFromId n then
       thmData := thmData.push data
-
   return thmData 
-
-def extractPremisesFromThmJson (stx : Syntax) : MetaM Json := 
-  toJson <$> extractPremisesFromThm stx
 
 /-- Extract and print premises from all the theorems in the context. -/
 def extractPremisesFromCtx : MetaM (Array TheoremPremises) := do 
@@ -110,83 +106,102 @@ def extractPremisesFromCtx : MetaM (Array TheoremPremises) := do
     for (_, cinfo) in (← getEnv).constants.toList do 
       if let some data ← extractPremisesFromConstantInfo cinfo then
         ctxData := ctxData.push data
-
     return ctxData
 
-def extractPremisesFromCtxJson : MetaM Json := 
-  toJson <$> extractPremisesFromCtx
+end Variants 
 
-def extractPremisesFromCtxAndSave (f : System.FilePath) : MetaM Unit := do 
-  let content ← Json.pretty <$> extractPremisesFromCtxJson 
-  IO.FS.writeFile f content
+section FromImports
 
-/-- Extract and print premises from all the theorems in the imports. -/
-def extractPremisesFromImports (recursive : Bool) 
-  : MetaM (Array ModulePremises) := do 
+open IO IO.FS
+
+/-- Given a way to insert `TheoremPremises`, this function goes through all
+the theorems in a module, extracts the premises filtering them appropriately 
+and inserts the resulting data. -/
+private def extractPremisesFromModule 
+  (insert : TheoremPremises → IO Unit)
+  (moduleName : Name) (moduleData : ModuleData) (user : Bool := false)
+  : MetaM Unit := do
+  dbg_trace s!"Extracting premises from {moduleName}."
+  let mut filter : Name → List Name → MetaM (List Name) := fun _ => pure
+  if user then 
+    if let some modulePath ← pathFromMathbinImport moduleName then 
+      -- If user premises and path found, then create a filter looking at proof 
+      -- source. If no proof source is found, no filter is applied.
+      filter := fun thmName premises => do
+        if let some source ← proofSource thmName modulePath then
+          return filterUserPremises premises source
+        else return premises
+  -- Go through all theorems in the module, filter premises and write.
+  for cinfo in moduleData.constants do 
+    -- Ignore non-user definitions.
+    let nameStr := toString cinfo.name
+    if nameStr.contains '!' || 
+       nameStr.contains '«' || 
+       "_eqn_".isSubstrOf nameStr ||
+       "_proof_".isSubstrOf nameStr || 
+       "_match_".isSubstrOf nameStr then 
+      continue
+    --dbg_trace s!"Constant: {cinfo.name}."
+    if let some data ← extractPremisesFromConstantInfo cinfo then 
+      let filteredPremises ← filter data.name data.premises
+      let filteredData := { data with premises := filteredPremises }
+      insert filteredData
+  pure ()
+
+/-- Call `extractPremisesFromModule` with an insertion mechanism that writes
+to the specified files for labels and features. -/
+def extractPremisesFromModuleToFiles 
+  (moduleName : Name) (moduleData : ModuleData) (user : Bool := false)
+  (labelsPath featuresPath : FilePath) 
+  : MetaM Unit := do 
+  let labelsHandle ← Handle.mk labelsPath Mode.append false
+  let featuresHandle ← Handle.mk featuresPath Mode.append false
+
+  let insert : TheoremPremises → IO Unit := fun data => do
+    labelsHandle.putStrLn (ToFeaturesLabels.labels data)
+    featuresHandle.putStrLn (ToFeaturesLabels.features data)
+
+  extractPremisesFromModule insert moduleName moduleData user
+
+/-- Looks through all the meaningful imports and applies 
+`extractPremisesFromModuleToFiles` to each of them. -/
+def extractPremisesFromImportsToFiles 
+  (user : Bool := false) (labelsPath featuresPath : FilePath) 
+  : MetaM Unit := do 
+  dbg_trace "Extracting premises from imports to {labelsPath}, {featuresPath}."
+
   let env ← getEnv
   let imports := env.imports.map (·.module)
   let moduleNamesArray := env.header.moduleNames
   let moduleDataArray := env.header.moduleData
 
-  let mut modulePremisesArray : Array ModulePremises := #[] 
-  for (name, moduleData) in Array.zip moduleNamesArray moduleDataArray do
-    -- TODO: Recurse through modules if recursive.
-    let isMathbinImport := name.getRoot == `Mathbin ∨ name == `Mathbin
-    if imports.contains name ∧ isMathbinImport then 
-      let mut theorems : Array TheoremPremises := #[]
-      for cinfo in moduleData.constants do 
-        if let some data ← extractPremisesFromConstantInfo cinfo then 
-          theorems := theorems.push data
-      let modulePremisesData := ModulePremises.mk name theorems
-      modulePremisesArray := modulePremisesArray.push modulePremisesData
+  let mut count := 0
+  for (moduleName, moduleData) in Array.zip moduleNamesArray moduleDataArray do
+    let isMathbinImport := 
+      moduleName.getRoot == `Mathbin || moduleName == `Mathbin
+    if imports.contains moduleName && isMathbinImport then 
+      count := count + 1
+      extractPremisesFromModuleToFiles moduleName moduleData user labelsPath featuresPath
+      dbg_trace s!"count = {count}."
+          
+  pure ()
 
-  return modulePremisesArray
+end FromImports
 
-def extractPremisesFromImportsJson : MetaM Json := 
-  toJson <$>  
-  extractPremisesFromImports (recursive := false)
+section Json
 
-def extractPremisesFromImportsAndSave (f : FilePath) : MetaM Unit := do 
-  let content ← Json.pretty <$> extractPremisesFromImportsJson 
-  IO.FS.writeFile f content
+def extractPremisesFromCtxJson : MetaM Json := 
+  toJson <$> extractPremisesFromCtx
 
-def extractPremisesFromAllImportsJson : MetaM Json := 
-  toJson <$> 
-  extractPremisesFromImports (recursive := false)
+def extractPremisesFromThmJson (stx : Syntax) : MetaM Json := 
+  toJson <$> extractPremisesFromThm stx
 
-def extractPremisesFromAllImportsAndSave (f : FilePath) : MetaM Unit := do 
-  let content ← Json.pretty <$> extractPremisesFromAllImportsJson 
-  IO.FS.writeFile f content
-
-/-- Call `extractPremisesFromImports`, then look at the source files and filter 
-the theorems to only obtain the ones typed by the user. -/
-def extractUserPremisesFromImports (recursive : Bool) 
-  : MetaM (Array ModulePremises) := do 
-  let mut moduleUserPremisesArray : Array ModulePremises := #[]
-  for modulePremisesData in ← extractPremisesFromImports recursive do 
-    let module := modulePremisesData.module
-    if let some modulePath ← pathFromMathbinImport module then 
-      let mut theorems : Array TheoremPremises := #[]
-      for theoremPremises in modulePremisesData.theorems do 
-        if let some source ← proofSource theoremPremises.name modulePath then
-          let filtered := filterUserPremises theoremPremises.premises source
-          dbg_trace s!"User premises for {theoremPremises.name} : {filtered}"
-        else 
-          dbg_trace s!"Could not find proof source for {theoremPremises.name}."
-          continue
-
-      let moduleUserPremises := ModulePremises.mk module theorems
-      moduleUserPremisesArray := moduleUserPremisesArray.push moduleUserPremises
-    else 
-      dbg_trace s!"Could not find path for {module}, not filtering premises."
-      moduleUserPremisesArray := moduleUserPremisesArray.push modulePremisesData
-
-  return moduleUserPremisesArray
+end Json
 
 section Commands 
 
-private def runAndPrint [ToString α] (f : MetaM α) : CommandElabM Unit :=
-  liftTermElabM <| do dbg_trace s!"{← f}"
+private def runAndPrint [ToJson α] (f : MetaM α) : CommandElabM Unit :=
+  liftTermElabM <| do dbg_trace s!"{Json.pretty <| toJson <| ← f}"
 
 elab "extract_premises_from_thm " id:term : command =>
   runAndPrint <| extractPremisesFromThm id
@@ -194,17 +209,16 @@ elab "extract_premises_from_thm " id:term : command =>
 elab "extract_premises_from_ctx" : command =>
   runAndPrint <| extractPremisesFromCtx
 
-elab "extract_premises_from_imports" : command =>
-  runAndPrint <| extractPremisesFromImports (recursive := false)
+syntax (name := extract_premises_to_files) 
+  "extract_premises_to_files l:" str " f:" str : command
 
-elab "extract_premises_from_all_imports" : command =>
-  runAndPrint <| extractPremisesFromImports (recursive := true)
-
-elab "extract_user_premises_from_imports" : command =>
-  runAndPrint <| extractUserPremisesFromImports (recursive := false)
-
-elab "extract_user_premises_from_all_imports" : command =>
-  runAndPrint <| extractUserPremisesFromImports (recursive := true)
+@[commandElab «extract_premises_to_files»]
+unsafe def elabExtractPremisesToFiles : CommandElab
+| `(extract_premises_to_files l:$lp f:$fp) => liftTermElabM <| do
+  let labelsPath ← evalTerm String (mkConst `String) lp.raw
+  let featuresPath ← evalTerm String (mkConst `String) fp.raw
+  extractPremisesFromImportsToFiles (user := true) labelsPath featuresPath
+| _ => throwUnsupportedSyntax
 
 end Commands 
 

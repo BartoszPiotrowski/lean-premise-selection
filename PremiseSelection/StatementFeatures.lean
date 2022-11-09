@@ -50,10 +50,17 @@ structure StatementFeatures where
   /-- Just the constant's names and how frequently they arise. -/
   nameCounts : Multiset Name := ∅
   bigramCounts : Multiset Bigram := ∅
-  subexpressions : List Expr := ∅
+  subexpressions : Multiset String := ∅
 
 instance : ForIn M (Multiset α) (α × Nat) :=
   show ForIn _ (RBMap _ _ _) _ by infer_instance
+
+instance : ToJson StatementFeatures where 
+  toJson features := Id.run <| do
+    let mut jsonFeatures : Array Json := #[]
+    for (⟨n1, n2⟩, _) in features.bigramCounts do
+      jsonFeatures := jsonFeatures.push s!"{n1}/{n2}"
+    return Json.arr jsonFeatures
 
 instance : EmptyCollection StatementFeatures := ⟨{}⟩
 instance : Append StatementFeatures where
@@ -69,8 +76,8 @@ def StatementFeatures.mkName : Name → StatementFeatures
 def StatementFeatures.mkBigram : Name → Name → StatementFeatures
   | n1, n2 => {bigramCounts := Multiset.singleton ⟨n1, n2⟩}
 
-def StatementFeatures.mkSubexpr : Expr → StatementFeatures
-  | x => {subexpressions := [x]}
+def StatementFeatures.mkSubexpr : String → StatementFeatures
+  | x => {subexpressions := Multiset.singleton x}
 
 def immediateName (e : Expr) : Option Name :=
   if let .const n _ := e then
@@ -84,7 +91,10 @@ def getHeadName? (e : Expr) : Option Name := do
   immediateName <| e.getAppFn
 
 def visitFeature (e : Expr) : WriterT StatementFeatures MetaM Unit  := do
-  tell <| StatementFeatures.mkSubexpr e
+  -- TODO: commenting this out for now, as delab was timing out occasionally.
+  -- What is the difference?
+  --let ppe ←  Lean.PrettyPrinter.ppExpr e
+  tell <| StatementFeatures.mkSubexpr <| toString e--ppe
   if let some n := immediateName e then
     tell <| StatementFeatures.mkName n
   if e.isApp then
