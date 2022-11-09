@@ -135,7 +135,9 @@ section FromImports
 
 open IO IO.FS
 
-/-- -/
+/-- Given a way to insert `TheoremPremises`, this function goes through all
+the theorems in a module, extracts the premises filtering them appropriately 
+and inserts the resulting data. -/
 private def extractPremisesFromModule 
   (insert : TheoremPremises → IO Unit)
   (moduleName : Name) (moduleData : ModuleData) (user : Bool := false)
@@ -167,13 +169,14 @@ private def extractPremisesFromModule
       insert filteredData
   pure ()
 
-/-- -/
+/-- Call `extractPremisesFromModule` with an insertion mechanism that writes
+to the specified files for labels and features. -/
 def extractPremisesFromModuleToFiles 
   (moduleName : Name) (moduleData : ModuleData) (user : Bool := false)
   (labelsPath featuresPath : FilePath) 
   : MetaM Unit := do 
-  let labelsHandle ← Handle.mk labelsPath Mode.write false
-  let featuresHandle ← Handle.mk featuresPath Mode.write false
+  let labelsHandle ← Handle.mk labelsPath Mode.append false
+  let featuresHandle ← Handle.mk featuresPath Mode.append false
 
   let insert : TheoremPremises → IO Unit := fun data => do
     labelsHandle.putStrLn (ToFeaturesLabels.labels data)
@@ -181,33 +184,25 @@ def extractPremisesFromModuleToFiles
 
   extractPremisesFromModule insert moduleName moduleData user
 
-/-- -/
+/-- Looks through all the meaningful imports and applies 
+`extractPremisesFromModuleToFiles` to each of them. -/
 def extractPremisesFromImportsToFiles 
   (user : Bool := false) (labelsPath featuresPath : FilePath) 
   : MetaM Unit := do 
   dbg_trace "Extracting premises from imports to {labelsPath}, {featuresPath}."
-  
-  let labelsHandle ← Handle.mk labelsPath Mode.append false
-  let featuresHandle ← Handle.mk featuresPath Mode.append false
 
-  let insert : Name → TheoremPremises → IO Unit := fun _ tp => do
-    labelsHandle.putStrLn (ToFeaturesLabels.labels tp)
-    featuresHandle.putStrLn (ToFeaturesLabels.features tp)
-  
   let env ← getEnv
   let imports := env.imports.map (·.module)
   let moduleNamesArray := env.header.moduleNames
   let moduleDataArray := env.header.moduleData
 
-  -- Write for every module, to avoid having to keep all the data in local 
-  -- memory.
   let mut count := 0
   for (moduleName, moduleData) in Array.zip moduleNamesArray moduleDataArray do
     let isMathbinImport := 
       moduleName.getRoot == `Mathbin || moduleName == `Mathbin
     if imports.contains moduleName && isMathbinImport then 
       count := count + 1
-      extractPremisesFromModule (insert moduleName) moduleName moduleData user
+      extractPremisesFromModuleToFiles moduleName moduleData user labelsPath featuresPath
       dbg_trace s!"count = {count}."
           
   pure ()
