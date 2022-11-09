@@ -206,7 +206,7 @@ def extractPremisesFromModuleToStructure
 
 /-- -/
 def extractPremisesFromImportsToFiles 
-  (recursive : Bool) (user : Bool := false) (labelsPath featuresPath : FilePath) 
+  (user : Bool := false) (labelsPath featuresPath : FilePath) 
   : MetaM Unit := do 
   dbg_trace "Extracting premises from imports to {labelsPath}, {featuresPath}."
   
@@ -222,12 +222,13 @@ def extractPremisesFromImportsToFiles
   let moduleNamesArray := env.header.moduleNames
   let moduleDataArray := env.header.moduleData
 
-  -- Write for every module, to avoid having to keep all the data in memory.
+  -- Write for every module, to avoid having to keep all the data in local 
+  -- memory.
   let mut count := 0
   for (moduleName, moduleData) in Array.zip moduleNamesArray moduleDataArray do
     let isMathbinImport := 
       moduleName.getRoot == `Mathbin || moduleName == `Mathbin
-    if (recursive || imports.contains moduleName) && isMathbinImport then 
+    if imports.contains moduleName && isMathbinImport then 
       count := count + 1
       let extractFn := 
         extractPremisesFromModule (insert moduleName) moduleName moduleData user
@@ -296,7 +297,7 @@ unsafe def elabExtractToFiles : CommandElab
 | `(extract_to_files l:$lp f:$fp) => liftTermElabM <| do
   let labelsPath ← evalTerm String (mkConst `String) lp.raw
   let featuresPath ← evalTerm String (mkConst `String) fp.raw
-  extractPremisesFromImportsToFiles (recursive := true) (user := true) labelsPath featuresPath
+  extractPremisesFromImportsToFiles (user := true) labelsPath featuresPath
 | _ => throwUnsupportedSyntax
 
 end Commands 
