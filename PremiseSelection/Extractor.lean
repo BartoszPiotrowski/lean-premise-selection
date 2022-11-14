@@ -73,12 +73,16 @@ private def extractPremisesFromConstantInfo
       let thmFeats ← getStatementFeatures thm
       let mut argsFeats := []
       for arg in args do
-        let argType ← inferType arg 
+        let argType ← inferType arg
         if (← inferType argType).isProp then
           let argFeats ← getStatementFeatures argType 
           if ! argFeats.bigramCounts.isEmpty then 
             argsFeats := argsFeats ++ [argFeats]
-      pure <| TheoremPremises.mk n thmFeats argsFeats (← extractPremises v)
+      -- Heuristic to avoid long executions for deep theorems.
+      if v.approxDepth < 128 then 
+        pure <| TheoremPremises.mk n thmFeats argsFeats (← extractPremises v)
+      else 
+        pure none
   | _ => pure none
 
 end CoreExtractor 
@@ -141,7 +145,6 @@ private def extractPremisesFromModule
        "_proof_".isSubstrOf nameStr || 
        "_match_".isSubstrOf nameStr then 
       continue
-    --dbg_trace s!"Constant: {cinfo.name}."
     if let some data ← extractPremisesFromConstantInfo cinfo then 
       let filteredPremises ← filter data.name data.premises
       let filteredData := { data with premises := filteredPremises }
