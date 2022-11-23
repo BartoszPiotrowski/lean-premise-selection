@@ -7,13 +7,6 @@ namespace PremiseSelection
 
 open Lean Lean.Elab Lean.Elab.Term Lean.Elab.Command Lean.Meta System
 
-/-- Format used for training. All the features (arguments and theorem) should be
-put together in a sequence tageged with `T` for theorem or `H` for hypotheses. 
-Premises are simply concatenated. -/
-class ToFeaturesLabels (α) where 
-  features : α → String 
-  labels   : α → String
-
 /-- Holds the name, features and premises of a single theorem. -/
 structure TheoremPremises where 
   name              : Name 
@@ -33,16 +26,42 @@ instance : ToJson TheoremPremises where
 instance : ToString TheoremPremises where 
   toString := Json.pretty ∘ toJson
 
-instance : ToFeaturesLabels TheoremPremises where 
-  features tp := Id.run <| do
+/-- Used to choose the feature format: nameCounts and/or bigramCounts and/or 
+subexpressions -/
+structure FeatureFormat where 
+  n : Bool 
+  b : Bool
+  s : Bool
+
+/-- Features used for training. All the features (arguments and theorem) should 
+be put together in a sequence tageged with `T` for theorem or `H` for 
+hypotheses.  -/
+def getFeatures (tp : TheoremPremises) (format : FeatureFormat) : String := 
+  Id.run <| do
     let mut result : Array String := #[]
-    for (⟨n1, n2⟩, _) in tp.features.bigramCounts do
-      result := result.push s!"T:{n1}/{n2}"
-    for arg in tp.argumentsFeatures do 
-      for (⟨n1, n2⟩, _) in arg.bigramCounts do
-        result := result.push s!"H:{n1}/{n2}"
+    if format.n then
+      for (n, _) in tp.features.nameCounts do
+        result := result.push s!"T:{n}"
+      for arg in tp.argumentsFeatures do 
+        for (n, _) in arg.nameCounts do
+          result := result.push s!"H:{n}"
+    if format.b then 
+      for (⟨n1, n2⟩, _) in tp.features.bigramCounts do
+        result := result.push s!"T:{n1}/{n2}"
+      for arg in tp.argumentsFeatures do 
+        for (⟨n1, n2⟩, _) in arg.bigramCounts do
+          result := result.push s!"H:{n1}/{n2}"
+    if format.s then 
+      for (n, _) in tp.features.subexpressions do
+        result := result.push s!"T:{n}"
+      for arg in tp.argumentsFeatures do 
+        for (n, _) in arg.subexpressions do
+          result := result.push s!"H:{n}"
     return " ".intercalate result.data
-  labels tp := " ".intercalate (tp.premises.map toString)
+
+/-- Premises are simply concatenated. -/
+def getLabels (tp : TheoremPremises) : String :=
+  " ".intercalate (tp.premises.map toString)
 
 section CoreExtractor
 
@@ -154,22 +173,24 @@ private def extractPremisesFromModule
 /-- Call `extractPremisesFromModule` with an insertion mechanism that writes
 to the specified files for labels and features. -/
 def extractPremisesFromModuleToFiles 
-  (moduleName : Name) (moduleData : ModuleData) (user : Bool := false)
+  (moduleName : Name) (moduleData : ModuleData) 
+  (user : Bool := false) (ff : FeatureFormat)
   (labelsPath featuresPath : FilePath) 
   : MetaM Unit := do 
   let labelsHandle ← Handle.mk labelsPath Mode.append false
   let featuresHandle ← Handle.mk featuresPath Mode.append false
 
   let insert : TheoremPremises → IO Unit := fun data => do
-    labelsHandle.putStrLn (ToFeaturesLabels.labels data)
-    featuresHandle.putStrLn (ToFeaturesLabels.features data)
+    labelsHandle.putStrLn (getLabels data)
+    featuresHandle.putStrLn (getFeatures data ff)
 
   extractPremisesFromModule insert moduleName moduleData user
 
 /-- Looks through all the meaningful imports and applies 
 `extractPremisesFromModuleToFiles` to each of them. -/
 def extractPremisesFromImportsToFiles 
-  (user : Bool := false) (labelsPath featuresPath : FilePath) 
+  (user : Bool := false) (format : FeatureFormat) 
+  (labelsPath featuresPath : FilePath) 
   : MetaM Unit := do 
   dbg_trace "Extracting premises from imports to {labelsPath}, {featuresPath}."
 
@@ -184,7 +205,8 @@ def extractPremisesFromImportsToFiles
       moduleName.getRoot == `Mathbin || moduleName == `Mathbin
     if imports.contains moduleName && isMathbinImport then 
       count := count + 1
-      extractPremisesFromModuleToFiles moduleName moduleData user labelsPath featuresPath
+      extractPremisesFromModuleToFiles 
+        moduleName moduleData user format labelsPath featuresPath
       dbg_trace s!"count = {count}."
           
   pure ()
@@ -220,7 +242,9 @@ unsafe def elabExtractPremisesToFiles : CommandElab
 | `(extract_premises_to_files l:$lp f:$fp) => liftTermElabM <| do
   let labelsPath ← evalTerm String (mkConst `String) lp.raw
   let featuresPath ← evalTerm String (mkConst `String) fp.raw
-  extractPremisesFromImportsToFiles (user := true) labelsPath featuresPath
+  let user := true 
+  let format : FeatureFormat := { n := false, b := true, s:= false }
+  extractPremisesFromImportsToFiles user format labelsPath featuresPath
 | _ => throwUnsupportedSyntax
 
 end Commands 
