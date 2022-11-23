@@ -33,8 +33,6 @@ structure FeatureFormat where
   b : Bool
   s : Bool
 
-#check String.trim
-
 /-- Features used for training. All the features (arguments and theorem) should 
 be put together in a sequence tageged with `T` for theorem or `H` for 
 hypotheses.  -/
@@ -43,22 +41,22 @@ def getFeatures (tp : TheoremPremises) (format : FeatureFormat) : String :=
     let mut result : Array String := #[]
     if format.n then
       for (n, _) in tp.features.nameCounts do
-        result := result.push s!"T:{n}".trim
+        result := result.push s!"T:{n}"
       for arg in tp.argumentsFeatures do 
         for (n, _) in arg.nameCounts do
-          result := result.push s!"H:{n}".trim
+          result := result.push s!"H:{n}"
     if format.b then 
       for (⟨n1, n2⟩, _) in tp.features.bigramCounts do
-        result := result.push s!"T:{n1}/{n2}".trim
+        result := result.push s!"T:{n1}/{n2}"
       for arg in tp.argumentsFeatures do 
         for (⟨n1, n2⟩, _) in arg.bigramCounts do
-          result := result.push s!"H:{n1}/{n2}".trim
+          result := result.push s!"H:{n1}/{n2}"
     if format.s then 
       for (n, _) in tp.features.subexpressions do
-        result := result.push s!"T:{n}".trim
+        result := result.push <| (s!"T:{n}").trim
       for arg in tp.argumentsFeatures do 
         for (n, _) in arg.subexpressions do
-          result := result.push s!"H:{n}".trim
+          result := result.push <| (s!"H:{n}").trim
     return " ".intercalate result.data
 
 /-- Premises are simply concatenated. -/
