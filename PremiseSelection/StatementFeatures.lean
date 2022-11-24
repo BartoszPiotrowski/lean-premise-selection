@@ -91,8 +91,8 @@ def getHeadName? (e : Expr) : Option Name := do
   immediateName <| e.getAppFn
 
 def visitFeature (e : Expr) : WriterT StatementFeatures MetaM Unit  := do
-  let ppe ←  Lean.PrettyPrinter.ppExpr e
-  tell <| StatementFeatures.mkSubexpr <| toString ppe
+  --let ppe ← Lean.PrettyPrinter.ppExpr e
+  tell <| StatementFeatures.mkSubexpr <| toString e
   if let some n := immediateName e then
     tell <| StatementFeatures.mkName n
   if e.isApp then
