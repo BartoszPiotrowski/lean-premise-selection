@@ -29,9 +29,18 @@ instance : ToString TheoremPremises where
 /-- Used to choose the feature format: nameCounts and/or bigramCounts and/or 
 subexpressions -/
 structure FeatureFormat where 
-  n : Bool 
-  b : Bool
-  s : Bool
+  n : Bool := true 
+  b : Bool := false 
+  s : Bool := true 
+deriving Inhabited
+
+/-- Structure to put together all the user options: max expression depth, filter
+user premises and feature format. -/
+structure UserOptions where 
+  maxDepth : UInt32        := 255  
+  user     : Bool          := false 
+  format   : FeatureFormat := default
+deriving Inhabited
 
 /-- Features used for training. All the features (arguments and theorem) should 
 be put together in a sequence tageged with `T` for theorem or `H` for 
@@ -85,7 +94,7 @@ private def extractPremises (e : Expr) : MetaM (List Name) := do
 
 /-- Given a `ConstantInfo` that holds theorem data, it finds the premises used 
 in the proof and constructs an object of type `PremisesData` with all. -/
-private def extractPremisesFromConstantInfo 
+private def extractPremisesFromConstantInfo (maxDepth : UInt32 := 255)
   : ConstantInfo → MetaM (Option TheoremPremises)
   | ConstantInfo.thmInfo { name := n, type := ty, value := v, .. } => do
     forallTelescope ty <| fun args thm => do
@@ -98,7 +107,7 @@ private def extractPremisesFromConstantInfo
           if ! argFeats.bigramCounts.isEmpty then 
             argsFeats := argsFeats ++ [argFeats]
       -- Heuristic to avoid long executions for deep theorems.
-      if v.approxDepth < 128 then 
+      if v.approxDepth < maxDepth then 
         pure <| TheoremPremises.mk n thmFeats argsFeats (← extractPremises v)
       else 
         pure none
@@ -110,26 +119,29 @@ section Variants
 
 /-- Same as `extractPremisesFromConstantInfo` but take an idenitfier and gets 
 its information from the environment. -/
-def extractPremisesFromId (id : Name) : MetaM (Option TheoremPremises) := do
+def extractPremisesFromId (maxDepth : UInt32 := 255) (id : Name) 
+  : MetaM (Option TheoremPremises) := do
   if let some cinfo := (← getEnv).find? id then 
-    extractPremisesFromConstantInfo cinfo
+    extractPremisesFromConstantInfo maxDepth cinfo
   else pure none
 
 /-- Extract and print premises from a single theorem. -/
-def extractPremisesFromThm (stx : Syntax) : MetaM (Array TheoremPremises) := do
+def extractPremisesFromThm (stx : Syntax) (maxDepth : UInt32 := 255)
+  : MetaM (Array TheoremPremises) := do
   let mut thmData : Array TheoremPremises := #[]
   for n in ← resolveGlobalConst stx do 
-    if let some data ← extractPremisesFromId n then
+    if let some data ← extractPremisesFromId maxDepth n then
       thmData := thmData.push data
   return thmData 
 
 /-- Extract and print premises from all the theorems in the context. -/
-def extractPremisesFromCtx : MetaM (Array TheoremPremises) := do 
-    let mut ctxData : Array TheoremPremises := #[]
-    for (_, cinfo) in (← getEnv).constants.toList do 
-      if let some data ← extractPremisesFromConstantInfo cinfo then
-        ctxData := ctxData.push data
-    return ctxData
+def extractPremisesFromCtx (maxDepth : UInt32 := 255) 
+  : MetaM (Array TheoremPremises) := do 
+  let mut ctxData : Array TheoremPremises := #[]
+  for (_, cinfo) in (← getEnv).constants.toList do 
+    if let some data ← extractPremisesFromConstantInfo maxDepth cinfo then
+      ctxData := ctxData.push data
+  return ctxData
 
 end Variants 
 
@@ -140,9 +152,10 @@ open IO IO.FS
 /-- Given a way to insert `TheoremPremises`, this function goes through all
 the theorems in a module, extracts the premises filtering them appropriately 
 and inserts the resulting data. -/
-private def extractPremisesFromModule 
+private def extractPremisesFromModule
   (insert : TheoremPremises → IO Unit)
-  (moduleName : Name) (moduleData : ModuleData) (user : Bool := false)
+  (moduleName : Name) (moduleData : ModuleData) 
+  (maxDepth : UInt32 := 255) (user : Bool := false)
   : MetaM Unit := do
   dbg_trace s!"Extracting premises from {moduleName}."
   let mut filter : Name → List Name → MetaM (List Name) := fun _ => pure
@@ -157,40 +170,41 @@ private def extractPremisesFromModule
   -- Go through all theorems in the module, filter premises and write.
   for cinfo in moduleData.constants do 
     -- Ignore non-user definitions.
-    let nameStr := toString cinfo.name
-    if nameStr.contains '!' || 
-       nameStr.contains '«' || 
-       "_eqn_".isSubstrOf nameStr ||
-       "_proof_".isSubstrOf nameStr || 
-       "_match_".isSubstrOf nameStr then 
+    if badTheoremName cinfo.name then 
       continue
-    if let some data ← extractPremisesFromConstantInfo cinfo then 
+    if let some data ← extractPremisesFromConstantInfo maxDepth cinfo then 
       let filteredPremises ← filter data.name data.premises
       let filteredData := { data with premises := filteredPremises }
       insert filteredData
   pure ()
+where 
+  badTheoremName (n : Name) : Bool := 
+  let s := toString n
+  s.contains '!' || s.contains '«' || 
+  "_eqn_".isSubstrOf s || "_proof_".isSubstrOf s || "_match_".isSubstrOf s 
 
 /-- Call `extractPremisesFromModule` with an insertion mechanism that writes
 to the specified files for labels and features. -/
 def extractPremisesFromModuleToFiles 
   (moduleName : Name) (moduleData : ModuleData) 
-  (user : Bool := false) (ff : FeatureFormat)
-  (labelsPath featuresPath : FilePath) 
+  (labelsPath featuresPath : FilePath) (userOptions : UserOptions := default)
+  (format : FeatureFormat := default)
   : MetaM Unit := do 
   let labelsHandle ← Handle.mk labelsPath Mode.append false
   let featuresHandle ← Handle.mk featuresPath Mode.append false
 
   let insert : TheoremPremises → IO Unit := fun data => do
     labelsHandle.putStrLn (getLabels data)
-    featuresHandle.putStrLn (getFeatures data ff)
-
-  extractPremisesFromModule insert moduleName moduleData user
+    featuresHandle.putStrLn (getFeatures data format)
+  
+  let maxDepth := userOptions.maxDepth
+  let user := userOptions.user
+  extractPremisesFromModule insert moduleName moduleData maxDepth user
 
 /-- Looks through all the meaningful imports and applies 
 `extractPremisesFromModuleToFiles` to each of them. -/
 def extractPremisesFromImportsToFiles 
-  (user : Bool := false) (format : FeatureFormat) 
-  (labelsPath featuresPath : FilePath) 
+  (labelsPath featuresPath : FilePath) (userOptions : UserOptions := default) 
   : MetaM Unit := do 
   dbg_trace "Extracting premises from imports to {labelsPath}, {featuresPath}."
 
@@ -206,7 +220,7 @@ def extractPremisesFromImportsToFiles
     if imports.contains moduleName && isMathbinImport then 
       count := count + 1
       extractPremisesFromModuleToFiles 
-        moduleName moduleData user format labelsPath featuresPath
+        moduleName moduleData labelsPath featuresPath userOptions
       dbg_trace s!"count = {count}."
           
   pure ()
@@ -242,9 +256,7 @@ unsafe def elabExtractPremisesToFiles : CommandElab
 | `(extract_premises_to_files l:$lp f:$fp) => liftTermElabM <| do
   let labelsPath ← evalTerm String (mkConst `String) lp.raw
   let featuresPath ← evalTerm String (mkConst `String) fp.raw
-  let user := true 
-  let format : FeatureFormat := { n := false, b := true, s:= false }
-  extractPremisesFromImportsToFiles user format labelsPath featuresPath
+  extractPremisesFromImportsToFiles labelsPath featuresPath
 | _ => throwUnsupportedSyntax
 
 end Commands 
