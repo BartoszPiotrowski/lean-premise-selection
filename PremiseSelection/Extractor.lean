@@ -158,30 +158,38 @@ private def extractPremisesFromModule
   (maxDepth : UInt32 := 255) (user : Bool := false)
   : MetaM Unit := do
   dbg_trace s!"Extracting premises from {moduleName}."
-  let mut filter : Name → List Name → MetaM (List Name) := fun _ => pure
+  let mut filter : Name → List Name → MetaM (List Name × Bool) := 
+    fun _ ns => pure (ns, true)
   if user then 
     if let some modulePath ← pathFromMathbinImport moduleName then 
       -- If user premises and path found, then create a filter looking at proof 
       -- source. If no proof source is found, no filter is applied.
       filter := fun thmName premises => do
         if let some source ← proofSource thmName modulePath then
-          return filterUserPremises premises source
-        else return premises
+          return (filterUserPremises premises source, true)
+        else return (premises, false)
   -- Go through all theorems in the module, filter premises and write.
+  let mut countFound := 0
+  let mut countTotal := 0
   for cinfo in moduleData.constants do 
     -- Ignore non-user definitions.
     if badTheoremName cinfo.name then 
       continue
     if let some data ← extractPremisesFromConstantInfo maxDepth cinfo then 
-      let filteredPremises ← filter data.name data.premises
+      let (filteredPremises, found) ← filter data.name data.premises
+      if found then 
+        countFound := countFound + 1
+      countTotal := countTotal + 1
       let filteredData := { data with premises := filteredPremises }
       insert filteredData
+  if user then
+    dbg_trace s!"Successfully filtered {countFound}/{countTotal}."
   pure ()
 where 
   badTheoremName (n : Name) : Bool := 
   let s := toString n
   s.contains '!' || s.contains '«' || 
-  "_eqn_".isSubstrOf s || "_proof_".isSubstrOf s || "_match_".isSubstrOf s 
+  "_eqn_".isSubstrOf s || "_proof_".isSubstrOf s || "_match_".isSubstrOf s
 
 /-- Call `extractPremisesFromModule` with an insertion mechanism that writes
 to the specified files for labels and features. -/
