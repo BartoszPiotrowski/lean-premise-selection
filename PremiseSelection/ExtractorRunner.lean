@@ -5,9 +5,12 @@ attribute [-instance] coeDecidableEq
 
 open Lean Lean.Meta PremiseSelection
 
+#check instLTNat
+#check Nat.hasLt
+
 /-- Run this file to extract premises as follows: 
   
-  `lean --run PremiseSelection/ExtractorRunner.lean data/test.labels data/test.features data/modules [+user] [+n] [+b] [+s]`
+  `lean --run PremiseSelection/ExtractorRunner.lean data/test.labels data/test.features data/modules [max-depth=n] [+user] [+n] [+b] [+s]`
 
 The first argument is the path to the labels file, the second argument is the 
 path to the features file, the third argument is the path to the modules file (a
@@ -31,15 +34,25 @@ unsafe def main (args : List String) : IO Unit := do
   let featuresPath    := args.get! 1
   let selectedModules := args.get! 2
 
+  -- Change the max depth allowed for proofs (recommended ~ 100).
+  let mut maxDepth : UInt32 := 255 
+  if (args.get! 4).startsWith "max-depth=" then
+    let maxDepthStr := (args.get! 4).drop 10
+    maxDepth := maxDepthStr.toNat!
+
   -- Add `+user` to the command to apply the user filter.
   let user := (args.drop 3).contains "+user"
 
   -- Flags for features: 
-  -- `+n` = nameCounts, `+b` = biagramCounts, `+s` = subexpressions.
+  -- * `+n` = nameCounts.
+  -- * `+b` = biagramCounts.
+  -- * `+s` = subexpressions.
   let n := (args.drop 3).contains "+n"
   let b := (args.drop 3).contains "+b"
   let s := (args.drop 3).contains "+s"
   let format := FeatureFormat.mk n b s
+
+  let options : UserOptions := ⟨maxDepth, user, format⟩
 
   let mut moduleNames := #[]
   for moduleNameStr in ← IO.FS.lines selectedModules do 
@@ -50,7 +63,7 @@ unsafe def main (args : List String) : IO Unit := do
       moduleNames := moduleNames.push moduleName
 
   withImportModules (moduleNames.data.map ({ module := · })) {} 0 fun env => do 
-    let m := extractPremisesFromImportsToFiles user format labelsPath featuresPath
+    let m := extractPremisesFromImportsToFiles labelsPath featuresPath options
     let ctx : Core.Context := { 
       fileName      := "", 
       fileMap       := default, 
