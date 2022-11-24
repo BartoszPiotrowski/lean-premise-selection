@@ -5,9 +5,6 @@ attribute [-instance] coeDecidableEq
 
 open Lean Lean.Meta PremiseSelection
 
-#check instLTNat
-#check Nat.hasLt
-
 /-- Run this file to extract premises as follows: 
   
   `lean --run PremiseSelection/ExtractorRunner.lean data/test.labels data/test.features data/modules [max-depth=n] [+user] [+n] [+b] [+s]`
