@@ -196,14 +196,13 @@ to the specified files for labels and features. -/
 def extractPremisesFromModuleToFiles 
   (moduleName : Name) (moduleData : ModuleData) 
   (labelsPath featuresPath : FilePath) (userOptions : UserOptions := default)
-  (format : FeatureFormat := default)
   : MetaM Unit := do 
   let labelsHandle ← Handle.mk labelsPath Mode.append false
   let featuresHandle ← Handle.mk featuresPath Mode.append false
 
   let insert : TheoremPremises → IO Unit := fun data => do
     labelsHandle.putStrLn (getLabels data)
-    featuresHandle.putStrLn (getFeatures data format)
+    featuresHandle.putStrLn (getFeatures data userOptions.format)
   
   let maxDepth := userOptions.maxDepth
   let user := userOptions.user
@@ -214,7 +213,7 @@ def extractPremisesFromModuleToFiles
 def extractPremisesFromImportsToFiles 
   (labelsPath featuresPath : FilePath) (userOptions : UserOptions := default) 
   : MetaM Unit := do 
-  dbg_trace "Extracting premises from imports to {labelsPath}, {featuresPath}."
+  dbg_trace s!"Extracting premises from imports to {labelsPath}, {featuresPath}."
 
   let env ← getEnv
   let imports := env.imports.map (·.module)

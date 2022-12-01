@@ -33,8 +33,8 @@ unsafe def main (args : List String) : IO Unit := do
 
   -- Change the max depth allowed for proofs (recommended ~ 100).
   let mut maxDepth : UInt32 := 255 
-  if (args.get! 4).startsWith "max-depth=" then
-    let maxDepthStr := (args.get! 4).drop 10
+  if @LE.le Nat instLENat 4 args.length && (args.get! 3).startsWith "max-depth=" then
+    let maxDepthStr := (args.get! 3).drop 10
     maxDepth := maxDepthStr.toNat!
 
   -- Add `+user` to the command to apply the user filter.
