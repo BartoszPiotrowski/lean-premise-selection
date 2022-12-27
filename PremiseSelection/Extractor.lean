@@ -174,10 +174,15 @@ private def extractPremisesFromModule
       -- If user premises and path found, then create a filter looking at proof 
       -- source. If no proof source is found, no filter is applied.
       filter := fun thmName premises => do
-        let premises ← filterUserPremisesFromFile premises modulePath
+        -- THIS IS WRONG. IT ASSUMES THE PREMISE IS DEFINED IN THE SAME FILE.
+        --let premises ← filterUserPremisesFromFile premises modulePath
+        -- THIS IS TOO SLOW.
+        -- let mathbinPath : System.FilePath := "." / "lean_packages" / "mathlib3port"
+        -- let premises ← filterUserPremisesFromFile premises mathbinPath
         if let some source ← proofSource thmName modulePath then
-          return (filterUserPremises premises source, true)
+         return (filterUserPremises premises source, true)
         else return (premises, false)
+
   -- Go through all theorems in the module, filter premises and write.
   let mut countFound := 0
   let mut countTotal := 0
@@ -188,7 +193,7 @@ private def extractPremisesFromModule
       if found then 
         countFound := countFound + 1
       countTotal := countTotal + 1
-      if !filteredPremises.isEmpty then 
+      if found && !filteredPremises.isEmpty then 
         let filteredData := { data with premises := filteredPremises }
         insert filteredData
   if user then
