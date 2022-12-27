@@ -12,7 +12,7 @@ structure TheoremPremises where
   name              : Name 
   features          : StatementFeatures
   argumentsFeatures : List StatementFeatures
-  premises          : List Name 
+  premises          : Multiset Name 
 
 instance : ToJson TheoremPremises where 
   toJson data := 
@@ -20,7 +20,7 @@ instance : ToJson TheoremPremises where
       ("name",              toJson data.name),
       ("features",          toJson data.features),
       ("argumentsFeatures", toJson data.argumentsFeatures),
-      ("premises",          toJson data.premises.eraseDup)
+      ("premises",          toJson data.premises)
     ]
 
 instance : ToString TheoremPremises where 
@@ -56,40 +56,43 @@ def getFeatures (tp : TheoremPremises) (format : FeatureFormat) : String :=
         for (n, _) in arg.nameCounts do
           result := result.push s!"H:{n}"
     if format.b then 
-      for (⟨n1, n2⟩, _) in tp.features.bigramCounts do
-        result := result.push s!"T:{n1}/{n2}"
+      for (b, _) in tp.features.bigramCounts do
+        result := result.push s!"T:{b}"
       for arg in tp.argumentsFeatures do 
-        for (⟨n1, n2⟩, _) in arg.bigramCounts do
-          result := result.push s!"H:{n1}/{n2}"
+        for (b, _) in arg.bigramCounts do
+          result := result.push s!"H:{b}"
     if format.s then 
-      for (n, _) in tp.features.subexpressions do
-        result := result.push <| (s!"T:{n}").trim
+      for (s, _) in tp.features.subexpressions do
+        result := result.push <| (s!"T:{s}").trim
       for arg in tp.argumentsFeatures do 
-        for (n, _) in arg.subexpressions do
-          result := result.push <| (s!"H:{n}").trim
+        for (s, _) in arg.subexpressions do
+          result := result.push <| (s!"H:{s}").trim
     return " ".intercalate result.data
 
 /-- Premises are simply concatenated. -/
 def getLabels (tp : TheoremPremises) : String :=
-  " ".intercalate (tp.premises.map toString)
+  " ".intercalate (tp.premises.toList.map toString)
 
 section CoreExtractor
 
 /-- Given a name `n`, if it qualifies as a premise, it returns `[n]`, otherwise 
 it returns the empty list. -/
-private def getTheoremFromName (n : Name) : MetaM (List Name) := do 
+private def getTheoremFromName (n : Name) : MetaM (Multiset Name) := do 
   -- NOTE: Get all consts whose type is of type Prop.
   if let some cinfo := (← getEnv).find? n then
-    if (← inferType cinfo.type).isProp then pure [n] else pure []
-  else pure []
+    if (← inferType cinfo.type).isProp then 
+      pure (Multiset.singleton n) 
+    else 
+      pure Multiset.empty
+  else pure Multiset.empty
 
-private def getTheoremFromExpr (e : Expr) : MetaM (List Name) := do
-  if let .const n _ := e then getTheoremFromName n else pure []
+private def getTheoremFromExpr (e : Expr) : MetaM (Multiset Name) := do
+  if let .const n _ := e then getTheoremFromName n else pure Multiset.empty
 
-private def visitPremise (e : Expr) : WriterT (List Name) MetaM Unit := do
+private def visitPremise (e : Expr) : WriterT (Multiset Name) MetaM Unit := do
   getTheoremFromExpr e >>= tell
 
-private def extractPremises (e : Expr) : MetaM (List Name) := do 
+private def extractPremises (e : Expr) : MetaM (Multiset Name) := do 
   let ((), premises) ← WriterT.run <| forEachExpr visitPremise e
   pure premises
 
@@ -164,7 +167,7 @@ private def extractPremisesFromModule
   (minDepth maxDepth : UInt32) (user : Bool := false)
   : MetaM Unit := do
   dbg_trace s!"Extracting premises from {moduleName}."
-  let mut filter : Name → List Name → MetaM (List Name × Bool) := 
+  let mut filter : Name → Multiset Name → MetaM (Multiset Name × Bool) := 
     fun _ ns => pure (ns, true)
   if user then 
     if let some modulePath ← pathFromMathbinImport moduleName then 
@@ -222,7 +225,7 @@ def extractPremisesFromImportsToFiles
   (labelsPath featuresPath : FilePath) (userOptions : UserOptions := default) 
   : MetaM Unit := do 
   dbg_trace s!"Clearing {labelsPath} and {featuresPath}."
-    
+
   IO.FS.writeFile labelsPath ""
   IO.FS.writeFile featuresPath ""
 
