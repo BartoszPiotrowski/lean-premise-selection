@@ -46,6 +46,12 @@ structure Bigram where
   snd : Name
   deriving Ord
 
+instance : ToJson Bigram where
+  toJson b := s!"{b.fst}/{b.snd}"
+
+instance : ToString Bigram where
+  toString b := s!"{b.fst}/{b.snd}"
+
 structure StatementFeatures where
   /-- Just the constant's names and how frequently they arise. -/
   nameCounts : Multiset Name := ∅
@@ -54,6 +60,19 @@ structure StatementFeatures where
 
 instance : ForIn M (Multiset α) (α × Nat) :=
   show ForIn _ (RBMap _ _ _) _ by infer_instance
+
+def Multiset.toList (m : Multiset α) : List α :=
+  m.fold (fun l x _ => x :: l) []
+
+instance [ToJson α] : ToJson (Multiset α) where
+  toJson m := Json.arr (Array.mk (m.toList.map toJson))
+
+instance : ToJson StatementFeatures where
+  toJson f := Json.mkObj [
+    ("nameCounts", toJson f.nameCounts),
+    ("bigramCounts", toJson f.bigramCounts),
+    ("subexpressions", toJson f.subexpressions)
+  ]
 
 instance : EmptyCollection StatementFeatures := ⟨{}⟩
 instance : Append StatementFeatures where
@@ -84,8 +103,8 @@ def getHeadName? (e : Expr) : Option Name := do
   immediateName <| e.getAppFn
 
 def visitFeature (e : Expr) : WriterT StatementFeatures MetaM Unit  := do
-  let ppe ←  Lean.PrettyPrinter.ppExpr e
-  tell <| StatementFeatures.mkSubexpr <| toString ppe
+  --let ppe ← Lean.PrettyPrinter.ppExpr e
+  tell <| StatementFeatures.mkSubexpr <| toString e
   if let some n := immediateName e then
     tell <| StatementFeatures.mkName n
   if e.isApp then
