@@ -174,6 +174,7 @@ private def extractPremisesFromModule
       -- If user premises and path found, then create a filter looking at proof 
       -- source. If no proof source is found, no filter is applied.
       filter := fun thmName premises => do
+        let premises ← filterUserPremisesFromFile premises modulePath
         if let some source ← proofSource thmName modulePath then
           return (filterUserPremises premises source, true)
         else return (premises, false)
@@ -190,8 +191,9 @@ private def extractPremisesFromModule
       if found then 
         countFound := countFound + 1
       countTotal := countTotal + 1
-      let filteredData := { data with premises := filteredPremises }
-      insert filteredData
+      if !filteredPremises.isEmpty then 
+        let filteredData := { data with premises := filteredPremises }
+        insert filteredData
   if user then
     dbg_trace s!"Successfully filtered {countFound}/{countTotal}."
   pure ()

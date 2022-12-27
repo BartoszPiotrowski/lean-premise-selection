@@ -96,12 +96,31 @@ appear. We take into account `ToAdditive` name translations. -/
 def filterUserPremises (premises : Multiset Name) (proofSource : String) 
   : Multiset Name := Id.run <| do
   let appearsInProof (s : String) : Bool := s.isSubstrOf proofSource
-  let mut result := premises
-  for (p, _) in premises do 
+  let mut result := Std.RBMap.empty
+  for (p, c) in premises do 
     let possibleNames := p.toString :: ToAdditive.reverseGuessName p.toString
-    if ! (possibleNames.any appearsInProof) then 
-      result := result.erase p
-    
+    if possibleNames.any appearsInProof then 
+      result := result.insert p c
   return result
+
+/-- Like `filterUserPremises` but simply checks that the premise appears 
+somewhere in the file, instead of looking for the proof source. -/
+def filterUserPremisesFromFile 
+  (premises : Multiset Name) (modulePath : FilePath)
+  : IO (Multiset Name) := do 
+  let appearsInFile (s : String) : IO Bool := do 
+    let args := #[s, modulePath.toString]
+    let output ← IO.Process.output { cmd := "grep", args := args }
+    if output.exitCode != 0 then 
+      return false
+    if output.stdout.isEmpty then 
+      return false
+    return true
+  let mut result := Std.RBMap.empty
+  for (p, c) in premises do 
+    let possibleNames := p.toString :: ToAdditive.reverseGuessName p.toString
+    if ← possibleNames.anyM appearsInFile then 
+      result := result.insert p c
+  return result  
 
 end PremiseSelection
