@@ -182,9 +182,6 @@ private def extractPremisesFromModule
   let mut countFound := 0
   let mut countTotal := 0
   for cinfo in moduleData.constants do 
-    -- Ignore non-user definitions.
-    if badTheoremName cinfo.name then 
-      continue
     let data? ← extractPremisesFromConstantInfo minDepth maxDepth cinfo
     if let some data := data? then 
       let (filteredPremises, found) ← filter data.name data.premises
@@ -197,11 +194,6 @@ private def extractPremisesFromModule
   if user then
     dbg_trace s!"Successfully filtered {countFound}/{countTotal}."
   pure ()
-where 
-  badTheoremName (n : Name) : Bool := 
-  let s := toString n
-  s.contains '!' || s.contains '«' || 
-  "_eqn_".isSubstrOf s || "_proof_".isSubstrOf s || "_match_".isSubstrOf s
 
 /-- Call `extractPremisesFromModule` with an insertion mechanism that writes
 to the specified files for labels and features. -/
