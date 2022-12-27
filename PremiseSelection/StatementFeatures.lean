@@ -46,6 +46,12 @@ structure Bigram where
   snd : Name
   deriving Ord
 
+instance : ToJson Bigram where
+  toJson b := s!"{b.fst}/{b.snd}"
+
+instance : ToString Bigram where
+  toString b := s!"{b.fst}/{b.snd}"
+
 structure StatementFeatures where
   /-- Just the constant's names and how frequently they arise. -/
   nameCounts : Multiset Name := ∅
@@ -55,12 +61,18 @@ structure StatementFeatures where
 instance : ForIn M (Multiset α) (α × Nat) :=
   show ForIn _ (RBMap _ _ _) _ by infer_instance
 
-instance : ToJson StatementFeatures where 
-  toJson features := Id.run <| do
-    let mut jsonFeatures : Array Json := #[]
-    for (⟨n1, n2⟩, _) in features.bigramCounts do
-      jsonFeatures := jsonFeatures.push s!"{n1}/{n2}"
-    return Json.arr jsonFeatures
+def Multiset.toList (m : Multiset α) : List α :=
+  m.fold (fun l x _ => x :: l) []
+
+instance [ToJson α] : ToJson (Multiset α) where
+  toJson m := Json.arr (Array.mk (m.toList.map toJson))
+
+instance : ToJson StatementFeatures where
+  toJson f := Json.mkObj [
+    ("nameCounts", toJson f.nameCounts),
+    ("bigramCounts", toJson f.bigramCounts),
+    ("subexpressions", toJson f.subexpressions)
+  ]
 
 instance : EmptyCollection StatementFeatures := ⟨{}⟩
 instance : Append StatementFeatures where
