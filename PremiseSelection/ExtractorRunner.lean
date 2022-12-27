@@ -30,11 +30,19 @@ unsafe def main (args : List String) : IO Unit := do
 
   -- Change the max depth allowed for proofs (recommended ~ 100).
   let mut maxDepth : UInt32 := 255 
-  if LE.le 4 args.length && (args.get! 3).startsWith "max-depth=" then
+  if 4 <= args.length && (args.get! 3).startsWith "max-depth=" then
     let maxDepthStr := (args.get! 3).drop 10
     let n := maxDepthStr.toNat!
-    if h : LT.lt n UInt32.size then
+    if h : n < UInt32.size then
       maxDepth := ⟨n, h⟩
+
+  -- Change the min depth allowed for proofs.
+  let mut minDepth : UInt32 := 0
+  if 5 <= args.length && (args.get! 4).startsWith "min-depth=" then
+    let minDepthStr := (args.get! 4).drop 10
+    let n := minDepthStr.toNat!
+    if h : n < UInt32.size then
+      minDepth := ⟨n, h⟩
 
   -- Add `+user` to the command to apply the user filter.
   let user := (args.drop 3).contains "+user"
@@ -46,9 +54,12 @@ unsafe def main (args : List String) : IO Unit := do
   let n := (args.drop 3).contains "+n"
   let b := (args.drop 3).contains "+b"
   let s := (args.drop 3).contains "+s"
+  if !n && !b && !s then
+    panic "No features selected. Add `+n`, `+b`, or `+s` to the command."
+
   let format := FeatureFormat.mk n b s
 
-  let options : UserOptions := ⟨maxDepth, user, format⟩
+  let options : UserOptions := ⟨minDepth, maxDepth, user, format⟩
 
   let mut moduleNames := #[]
   for moduleNameStr in ← IO.FS.lines selectedModules do 

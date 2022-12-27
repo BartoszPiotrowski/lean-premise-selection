@@ -37,6 +37,7 @@ deriving Inhabited
 /-- Structure to put together all the user options: max expression depth, filter
 user premises and feature format. -/
 structure UserOptions where 
+  minDepth : UInt32        := 0
   maxDepth : UInt32        := 255  
   user     : Bool          := false 
   format   : FeatureFormat := default
@@ -94,7 +95,8 @@ private def extractPremises (e : Expr) : MetaM (List Name) := do
 
 /-- Given a `ConstantInfo` that holds theorem data, it finds the premises used 
 in the proof and constructs an object of type `PremisesData` with all. -/
-private def extractPremisesFromConstantInfo (maxDepth : UInt32 := 255)
+private def extractPremisesFromConstantInfo 
+  (minDepth : UInt32 := 0) (maxDepth : UInt32 := 255)
   : ConstantInfo → MetaM (Option TheoremPremises)
   | ConstantInfo.thmInfo { name := n, type := ty, value := v, .. } => do
     forallTelescope ty <| fun args thm => do
@@ -106,8 +108,9 @@ private def extractPremisesFromConstantInfo (maxDepth : UInt32 := 255)
           let argFeats ← getStatementFeatures argType 
           if ! argFeats.bigramCounts.isEmpty then 
             argsFeats := argsFeats ++ [argFeats]
-      -- Heuristic to avoid long executions for deep theorems.
-      if v.approxDepth < maxDepth then 
+      -- Heuristic that can be used to ignore simple theorems and to avoid long 
+      -- executions for deep theorems.
+      if minDepth <= v.approxDepth && v.approxDepth < maxDepth then 
         pure <| TheoremPremises.mk n thmFeats argsFeats (← extractPremises v)
       else 
         pure none
@@ -119,27 +122,30 @@ section Variants
 
 /-- Same as `extractPremisesFromConstantInfo` but take an idenitfier and gets 
 its information from the environment. -/
-def extractPremisesFromId (maxDepth : UInt32 := 255) (id : Name) 
+def extractPremisesFromId 
+  (minDepth : UInt32 := 0) (maxDepth : UInt32 := 255) (id : Name) 
   : MetaM (Option TheoremPremises) := do
   if let some cinfo := (← getEnv).find? id then 
-    extractPremisesFromConstantInfo maxDepth cinfo
+    extractPremisesFromConstantInfo minDepth maxDepth cinfo
   else pure none
 
 /-- Extract and print premises from a single theorem. -/
-def extractPremisesFromThm (stx : Syntax) (maxDepth : UInt32 := 255)
+def extractPremisesFromThm  
+  (minDepth : UInt32 := 0) (maxDepth : UInt32 := 255) (stx : Syntax)
   : MetaM (Array TheoremPremises) := do
   let mut thmData : Array TheoremPremises := #[]
-  for n in ← resolveGlobalConst stx do 
-    if let some data ← extractPremisesFromId maxDepth n then
+  for name in ← resolveGlobalConst stx do 
+    if let some data ← extractPremisesFromId minDepth maxDepth name then
       thmData := thmData.push data
   return thmData 
 
 /-- Extract and print premises from all the theorems in the context. -/
-def extractPremisesFromCtx (maxDepth : UInt32 := 255) 
+def extractPremisesFromCtx (minDepth : UInt32 := 0) (maxDepth : UInt32 := 255)
   : MetaM (Array TheoremPremises) := do 
   let mut ctxData : Array TheoremPremises := #[]
   for (_, cinfo) in (← getEnv).constants.toList do 
-    if let some data ← extractPremisesFromConstantInfo maxDepth cinfo then
+    let data? ← extractPremisesFromConstantInfo minDepth maxDepth cinfo
+    if let some data := data? then
       ctxData := ctxData.push data
   return ctxData
 
@@ -155,7 +161,7 @@ and inserts the resulting data. -/
 private def extractPremisesFromModule
   (insert : TheoremPremises → IO Unit)
   (moduleName : Name) (moduleData : ModuleData) 
-  (maxDepth : UInt32 := 255) (user : Bool := false)
+  (minDepth maxDepth : UInt32) (user : Bool := false)
   : MetaM Unit := do
   dbg_trace s!"Extracting premises from {moduleName}."
   let mut filter : Name → List Name → MetaM (List Name × Bool) := 
@@ -175,7 +181,8 @@ private def extractPremisesFromModule
     -- Ignore non-user definitions.
     if badTheoremName cinfo.name then 
       continue
-    if let some data ← extractPremisesFromConstantInfo maxDepth cinfo then 
+    let data? ← extractPremisesFromConstantInfo minDepth maxDepth cinfo
+    if let some data := data? then 
       let (filteredPremises, found) ← filter data.name data.premises
       if found then 
         countFound := countFound + 1
@@ -204,9 +211,10 @@ def extractPremisesFromModuleToFiles
     labelsHandle.putStrLn (getLabels data)
     featuresHandle.putStrLn (getFeatures data userOptions.format)
   
+  let minDepth := userOptions.minDepth
   let maxDepth := userOptions.maxDepth
   let user := userOptions.user
-  extractPremisesFromModule insert moduleName moduleData maxDepth user
+  extractPremisesFromModule insert moduleName moduleData minDepth maxDepth user
 
 /-- Looks through all the meaningful imports and applies 
 `extractPremisesFromModuleToFiles` to each of them. -/
@@ -240,7 +248,7 @@ def extractPremisesFromCtxJson : MetaM Json :=
   toJson <$> extractPremisesFromCtx
 
 def extractPremisesFromThmJson (stx : Syntax) : MetaM Json := 
-  toJson <$> extractPremisesFromThm stx
+  toJson <$> extractPremisesFromThm (stx := stx)
 
 end Json
 
@@ -250,7 +258,7 @@ private def runAndPrint [ToJson α] (f : MetaM α) : CommandElabM Unit :=
   liftTermElabM <| do dbg_trace s!"{Json.pretty <| toJson <| ← f}"
 
 elab "extract_premises_from_thm " id:term : command =>
-  runAndPrint <| extractPremisesFromThm id
+  runAndPrint <| extractPremisesFromThm (stx := id)
 
 elab "extract_premises_from_ctx" : command =>
   runAndPrint <| extractPremisesFromCtx
