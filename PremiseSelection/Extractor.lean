@@ -221,6 +221,11 @@ def extractPremisesFromModuleToFiles
 def extractPremisesFromImportsToFiles 
   (labelsPath featuresPath : FilePath) (userOptions : UserOptions := default) 
   : MetaM Unit := do 
+  dbg_trace s!"Clearing {labelsPath} and {featuresPath}."
+    
+  IO.FS.writeFile labelsPath ""
+  IO.FS.writeFile featuresPath ""
+
   dbg_trace s!"Extracting premises from imports to {labelsPath}, {featuresPath}."
 
   let env ← getEnv
