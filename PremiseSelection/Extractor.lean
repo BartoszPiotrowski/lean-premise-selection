@@ -179,9 +179,14 @@ private def extractPremisesFromModule
         -- THIS IS TOO SLOW.
         -- let mathbinPath : System.FilePath := "." / "lean_packages" / "mathlib3port"
         -- let premises ← filterUserPremisesFromFile premises mathbinPath
-        if let some source ← proofSource thmName modulePath then
-         return (filterUserPremises premises source, true)
-        else return (premises, false)
+        -- PROOF SOURCE CODE.
+        -- if let some source ← proofSource thmName modulePath then
+        --  return (filterUserPremises premises source, true)
+        -- else return (premises, false)
+        -- WITH all_names.
+        let allNamesPath : System.FilePath := "." / "data" / "all_names"
+        let premises ← filterUserPremisesFromFile premises allNamesPath
+        return (premises, true)
 
   -- Go through all theorems in the module, filter premises and write.
   let mut countFound := 0

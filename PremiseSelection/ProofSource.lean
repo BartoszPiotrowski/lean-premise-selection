@@ -107,10 +107,10 @@ def filterUserPremises (premises : Multiset Name) (proofSource : String)
 /-- Like `filterUserPremises` but simply checks that the premise appears 
 somewhere in the file, instead of looking for the proof source. -/
 def filterUserPremisesFromFile 
-  (premises : Multiset Name) (modulePath : FilePath)
+  (premises : Multiset Name) (referencePath : FilePath)
   : IO (Multiset Name) := do 
   let appearsInFile (s : String) : IO Bool := do 
-    let args := #[s, modulePath.toString]
+    let args := #[s, referencePath.toString]
     let output ← IO.Process.output { cmd := "grep", args := args }
     if output.exitCode != 0 then 
       return false
@@ -119,8 +119,10 @@ def filterUserPremisesFromFile
     return true
   let mut result := Std.RBMap.empty
   for (p, c) in premises do 
-    let possibleNames := p.toString :: ToAdditive.reverseGuessName p.toString
-    if ← possibleNames.anyM appearsInFile then 
+    -- let possibleNames := p.toString --:: ToAdditive.reverseGuessName p.toString
+    -- if ← possibleNames.anyM appearsInFile then 
+    --  result := result.insert p c
+    if ← appearsInFile p.toString then 
       result := result.insert p c
   return result  
 
