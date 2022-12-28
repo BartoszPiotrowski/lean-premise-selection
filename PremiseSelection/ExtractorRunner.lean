@@ -30,7 +30,7 @@ unsafe def main (args : List String) : IO Unit := do
 
   -- Change the min and max depth allowed for proofs (max recommended ~ 100).
   let mut minDepth : UInt32 := 0
-  let mut maxDepth : UInt32 := 0
+  let mut maxDepth : UInt32 := 255
   for pos in [3, 4] do 
     for key in ["min", "max"] do 
       let fullKey := key ++ "-depth="
