@@ -98,8 +98,9 @@ def filterUserPremises (premises : Multiset Name) (proofSource : String)
   let appearsInProof (s : String) : Bool := s.isSubstrOf proofSource
   let mut result := Std.RBMap.empty
   for (p, c) in premises do 
-    let possibleNames := p.toString :: ToAdditive.reverseGuessName p.toString
-    if possibleNames.any appearsInProof then 
+    --let possibleNames := p.toString :: ToAdditive.reverseGuessName p.toString
+    --if possibleNames.any appearsInProof then 
+    if appearsInProof p.toString then
       result := result.insert p c
   return result
 
