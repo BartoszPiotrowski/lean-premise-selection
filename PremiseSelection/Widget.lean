@@ -42,7 +42,7 @@ instance : Alternative RequestM where
   orElse a b c := OrElse.orElse (a c) (fun _ => b () c)
 
 open Lean Server RequestM in
-@[serverRpcMethod]
+@[server_rpc_method]
 def getItems (args : GetItemArgs) : RequestM (RequestTask (Array ItemData)) := do
   let doc ← readDoc
   let pos := doc.meta.text.lspPosToUtf8Pos args.pos
