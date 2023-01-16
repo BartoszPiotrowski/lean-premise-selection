@@ -185,18 +185,18 @@ def HashSet.diff (a : HashSet β) (b : HashSet β) : HashSet β :=
   HashSet.fold HashSet.erase a b
 
 def freqs (l : List β) :=
-  let update (tbl : HashMap β Int) (i : β) :=
+  let update (tbl : Std.HashMap β Int) (i : β) :=
     if tbl.contains i then tbl.insert i (tbl.find! i + 1)
     else tbl.insert i 1
-  List.foldl (fun tbl i => update tbl i) HashMap.empty l
+  List.foldl (fun tbl i => update tbl i) Std.HashMap.empty l
 
 def unionFreqs (l : List (List β)) :=
-  let update (tbl : HashMap β Int) (i : β) :=
+  let update (tbl : Std.HashMap β Int) (i : β) :=
     if tbl.contains i then tbl.insert i (tbl.find! i + 1)
     else tbl.insert i 1
-  let updateMany (tbl : HashMap β Int) (l : List β) :=
+  let updateMany (tbl : Std.HashMap β Int) (l : List β) :=
     l.foldl update tbl
-  (l.foldl updateMany HashMap.empty)
+  (l.foldl updateMany Std.HashMap.empty)
 
 def String.joinWith (l : List String) (c : String) : String :=
   match l with

@@ -2,7 +2,7 @@ import PremiseSelection.Utils
 
 namespace PremiseSelection
 
-open Std List
+open Lean Std List
 
 def Label := List String
 
@@ -79,7 +79,7 @@ variable {α} [BEq α] [Hashable α]
 
 def giniImpur (l : List α) : Float :=
   let len := l.length
-  let update (tbl : HashMap α Int) i :=
+  let update (tbl : Std.HashMap α Int) i :=
     if tbl.contains i then tbl.insert i (tbl.find! i + 1)
     else tbl.insert i 1
   let tbl := List.foldl (fun tbl i => update tbl i) HashMap.empty l
