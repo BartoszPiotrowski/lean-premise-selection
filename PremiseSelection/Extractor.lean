@@ -170,7 +170,7 @@ private def extractPremisesFromModule
   let mut filter : Name → Multiset Name → MetaM (Multiset Name × Bool) :=
     fun _ ns => pure (ns, true)
   if user then
-    if let some modulePath ← pathFromMathbinImport moduleName then
+    if let some modulePath ← proofSourcePath moduleName then
       -- If user premises and path found, then create a filter looking at proof
       -- source. If no proof source is found, no filter is applied.
       filter := fun thmName premises => do
@@ -180,18 +180,19 @@ private def extractPremisesFromModule
         -- let mathbinPath : System.FilePath := "." / "lean_packages" / "mathlib3port"
         -- let premises ← filterUserPremisesFromFile premises mathbinPath
         -- PROOF SOURCE CODE.
-        -- if let some source ← proofSource thmName modulePath then
-        --  return (filterUserPremises premises source, true)
-        -- else return (premises, false)
+        if let some source ← proofSource thmName modulePath then
+         return (filterUserPremises premises source, true)
+        else return (premises, false)
         -- WITH all_names.
-        let allNamesPath : System.FilePath := "." / "data" / "all_names"
-        let premises ← filterUserPremisesFromFile premises allNamesPath
-        return (premises, true)
+        -- let allNamesPath : System.FilePath := "." / "data" / "all_names"
+        -- let premises ← filterUserPremisesFromFile premises allNamesPath
+        -- return (premises, true)
 
   -- Go through all theorems in the module, filter premises and write.
   let mut countFound := 0
   let mut countTotal := 0
   for cinfo in moduleData.constants do
+    
     let data? ← extractPremisesFromConstantInfo minDepth maxDepth cinfo
     if let some data := data? then
       let (filteredPremises, found) ← filter data.name data.premises
@@ -292,7 +293,7 @@ elab "extract_premises_from_ctx" : command =>
 syntax (name := extract_premises_to_files)
   "extract_premises_to_files l:" str " f:" str : command
 
-@[commandElab «extract_premises_to_files»]
+@[command_elab «extract_premises_to_files»]
 unsafe def elabExtractPremisesToFiles : CommandElab
 | `(extract_premises_to_files l:$lp f:$fp) => liftTermElabM <| do
   let labelsPath ← evalTerm String (mkConst `String) lp.raw
