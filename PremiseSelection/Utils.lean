@@ -1,6 +1,5 @@
 import Lean
 import Init.Data.Random
-import Std.Data.HashSet
 import Std.Data.HashMap
 
 section List
@@ -8,11 +7,11 @@ section List
 variable {α} [Inhabited α]
 
 
-def minList [LE α] [DecidableRel (@LE.le α _)] : List α → α
+def minList [Min α] : List α → α
   | []         => panic! "Empty list"
   | l@(h :: _) => l.foldl min h
 
-def maxList [LT α] [DecidableRel (@LT.lt α _)] : List α → α
+def maxList [Max α] : List α → α
   | []         => panic! "Empty list"
   | l@(h :: _) => l.foldl max h
 
@@ -152,7 +151,7 @@ def floatOfString (s : String) : Float :=
   let s := Float.ofInt s.toInt!
   (Float.ofInt sign) * (S + (s / 10 ^ l))
 
-open Std
+open Lean
 
 variable {β : Type} [BEq β] [Hashable β]
 
