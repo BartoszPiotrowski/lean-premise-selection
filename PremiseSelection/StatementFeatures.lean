@@ -12,17 +12,17 @@ Ouput: the theorem statement as an expr
  -/
 open Std
 
-def Std.RBMap.modify (k : κ) (fn : Option α → Option α) (r : RBMap κ α cmp) :=
+def Std.RBMap.modify' (k : κ) (fn : Option α → Option α) (r : RBMap κ α cmp) :=
   match fn <| r.find? k with
   | none => r.erase k
   | some v => r.insert k v
 
 def Std.RBMap.mergeBy (fn : κ → α → α → α) (r1 r2 : RBMap κ α cmp) :  RBMap κ α cmp :=
-  r2.fold (fun r1 k v2 => r1.modify k (fun | none => some v2 | some v1 => some (fn k v1 v2))) r1
+  r2.foldl (fun r1 k v2 => r1.modify' k (fun | none => some v2 | some v1 => some (fn k v1 v2))) r1
 
 namespace PremiseSelection
 
-def Multiset (α : Type) [Ord α] := RBMap α Nat compare
+def Multiset (α : Type) [Ord α] := Std.RBMap α Nat compare
 
 variable {α : Type} [Ord α]
 
@@ -34,7 +34,7 @@ instance : Append  (Multiset α) where
   append x y := x.mergeBy (fun _ => (·+·)) y
 
 def Multiset.add : Multiset α → α → Multiset α
-  | m, a => m.modify a (fun | none => some 1 | some v => some (v + 1))
+  | m, a => m.modify' a (fun | none => some 1 | some v => some (v + 1))
 
 def Multiset.singleton : α → Multiset α
   | a => Multiset.empty |>.add a
@@ -59,10 +59,10 @@ structure StatementFeatures where
   subexpressions : Multiset String := ∅
 
 instance : ForIn M (Multiset α) (α × Nat) :=
-  show ForIn _ (RBMap _ _ _) _ by infer_instance
+  show ForIn _ (Std.RBMap _ _ _) _ by infer_instance
 
 def Multiset.toList (m : Multiset α) : List α :=
-  m.fold (fun l x _ => x :: l) []
+  m.foldl (fun l x _ => x :: l) []
 
 instance [ToJson α] : ToJson (Multiset α) where
   toJson m := Json.arr (Array.mk (m.toList.map toJson))
