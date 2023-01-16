@@ -44,7 +44,7 @@ structure UserOptions where
 deriving Inhabited
 
 /-- Features used for training. All the features (arguments and theorem) should
-be put together in a sequence tageged with `T` for theorem or `H` for
+be put together in a sequence tagged with `T` for theorem or `H` for
 hypotheses.  -/
 def getFeatures (tp : TheoremPremises) (format : FeatureFormat) : String :=
   Id.run <| do
@@ -224,7 +224,7 @@ def extractPremisesFromModuleToFiles
   let user := userOptions.user
   extractPremisesFromModule insert moduleName moduleData minDepth maxDepth user
 
-/-- Go through the whole module and find the defininions that appear in the 
+/-- Go through the whole module and find the defininions that appear in the
 corresponding source file. This was used to generate `all_names`. -/
 def extractUserDefinitionsFromModuleToFile
   (moduleName : Name) (moduleData : ModuleData) (outputPath : FilePath)
@@ -234,7 +234,7 @@ def extractUserDefinitionsFromModuleToFile
     if let some modulePath ← pathFromMathbinImport moduleName then
       let args := #[cinfo.name.toString, modulePath.toString]
       let output ← IO.Process.output { cmd := "grep", args := args }
-      if output.exitCode == 0 && !output.stdout.isEmpty then 
+      if output.exitCode == 0 && !output.stdout.isEmpty then
         labelsHandle.putStrLn cinfo.name.toString
 
 /-- Looks through all the meaningful imports and applies
