@@ -3,24 +3,24 @@ open Lake DSL
 
 package leanPremiseSelection
 
-require mathlib3port from git "https://github.com/leanprover-community/mathlib3port.git"@"cce383df712a48f0c773a10e8c3295164fbb9f57"
+require mathlib3port from git "https://github.com/leanprover-community/mathlib3port.git"@"f4e5dfe2aa778b4cc42620b6b58442504348d20d"
 
-@[defaultTarget]
+@[default_target]
 lean_lib PremiseSelection
 
 -- Separate test library. Useful to import mathbin separately.
-@[defaultTarget]
+@[default_target]
 lean_lib Tests
 
-@[defaultTarget]
+@[default_target]
 lean_exe TrainAndPredict where
   root := `Scripts.TrainAndPredict
 
-@[defaultTarget]
+@[default_target]
 lean_exe LoadAndPredict where
   root := `Scripts.LoadAndPredict
 
-@[defaultTarget]
+@[default_target]
 lean_exe KnnPredict where
   root := `Scripts.KnnPredict
 
@@ -54,5 +54,5 @@ def tsxTarget (pkg : Package) (tsxName : String) [Fact (pkg.name = _package.name
       cwd := some widgetDir
     }
 
-@[defaultTarget]
+@[default_target]
 target widgetJs (pkg : Package) : FilePath := tsxTarget pkg "index"
