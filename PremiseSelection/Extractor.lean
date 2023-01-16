@@ -168,42 +168,38 @@ private def extractPremisesFromModule
   : MetaM Unit := do
   dbg_trace s!"Extracting premises from {moduleName}."
   let mut filter : Name → Multiset Name → MetaM (Multiset Name × Bool) :=
-    fun _ ns => pure (ns, true)
+    fun _ ns => pure (ns, false)
   if user then
     if let some modulePath ← proofSourcePath moduleName then
       -- If user premises and path found, then create a filter looking at proof
       -- source. If no proof source is found, no filter is applied.
+      let data ← IO.FS.readFile modulePath
+      let proofsJson := 
+        match Json.parse data with 
+        | Except.ok json => json 
+        | Except.error _ => Json.null
       filter := fun thmName premises => do
-        -- THIS IS WRONG. IT ASSUMES THE PREMISE IS DEFINED IN THE SAME FILE.
-        --let premises ← filterUserPremisesFromFile premises modulePath
-        -- THIS IS TOO SLOW.
-        -- let mathbinPath : System.FilePath := "." / "lean_packages" / "mathlib3port"
-        -- let premises ← filterUserPremisesFromFile premises mathbinPath
-        -- PROOF SOURCE CODE.
-        if let some source ← proofSource thmName modulePath then
+        if let some source ← proofSource thmName proofsJson then
          return (filterUserPremises premises source, true)
         else return (premises, false)
-        -- WITH all_names.
-        -- let allNamesPath : System.FilePath := "." / "data" / "all_names"
-        -- let premises ← filterUserPremisesFromFile premises allNamesPath
-        -- return (premises, true)
 
   -- Go through all theorems in the module, filter premises and write.
+  let mut countFoundAndNotEmpty := 0
   let mut countFound := 0
   let mut countTotal := 0
   for cinfo in moduleData.constants do
-    
     let data? ← extractPremisesFromConstantInfo minDepth maxDepth cinfo
     if let some data := data? then
+      countTotal := countTotal + 1
       let (filteredPremises, found) ← filter data.name data.premises
       if found then
         countFound := countFound + 1
-      countTotal := countTotal + 1
       if found && !filteredPremises.isEmpty then
+        countFoundAndNotEmpty := countFoundAndNotEmpty + 1
         let filteredData := { data with premises := filteredPremises }
         insert filteredData
   if user then
-    dbg_trace s!"Successfully filtered {countFound}/{countTotal}."
+    dbg_trace s!"Total : {countTotal} | Source : {countFound} | Filtered : {countFoundAndNotEmpty}."
   pure ()
 
 /-- Call `extractPremisesFromModule` with an insertion mechanism that writes
@@ -256,11 +252,11 @@ def extractPremisesFromImportsToFiles
 
   let mut count := 0
   for (moduleName, moduleData) in Array.zip moduleNamesArray moduleDataArray do
-    let isMathbinImport :=
-      moduleName.getRoot == `Mathbin || moduleName == `Mathbin
-    if imports.contains moduleName && isMathbinImport then
+    let isMathImport :=
+      moduleName.getRoot == `Mathbin || moduleName.getRoot == `Mathlib 
+    if imports.contains moduleName && isMathImport then
       count := count + 1
-      --extractUserDefinitionsFromModuleToFile moduleName moduleData "./data/all_names"
+      -- extractUserDefinitionsFromModuleToFile moduleName moduleData "./data/all_names"
       extractPremisesFromModuleToFiles
         moduleName moduleData labelsPath featuresPath userOptions
       dbg_trace s!"count = {count}."

@@ -66,7 +66,7 @@ unsafe def main (args : List String) : IO Unit := do
   let mut moduleNames := #[]
   for moduleNameStr in ← IO.FS.lines selectedModules do 
     let moduleNameStr := moduleNameStr.trim
-    if moduleNameStr.startsWith "Mathbin" then
+    if moduleNameStr.startsWith "Math" then
       let decopmosedNameStr := (moduleNameStr.splitOn ".").map Name.mkSimple
       let moduleName := decopmosedNameStr.foldl Name.append Lean.Name.anonymous
       moduleNames := moduleNames.push moduleName
