@@ -31,10 +31,12 @@ def proofSourcePath (mod : Name) : MetaM (Option FilePath) := do
 
 /-- Given a theorem name and a file path, extract the proof text. -/
 def proofSource (thm : Name) (json : Json) : MetaM (Option String) := do
-  match json.getObjVal? thm.toString  with 
-  | Except.ok (Json.str s) =>
-      return some s
-  | _ => return none
+  if let Name.str _ thmStr := thm then 
+    match json.getObjVal? thmStr  with 
+    | Except.ok (Json.str s) =>
+        return some s
+    | _ => return none
+  return none
 
 namespace PremiseSelection
 
