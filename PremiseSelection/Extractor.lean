@@ -71,7 +71,7 @@ def getFeatures (tp : TheoremPremises) (format : FeatureFormat) : String :=
 
 /-- Premises are simply concatenated. -/
 def getLabels (tp : TheoremPremises) : String :=
-  " ".intercalate (tp.premises.toList.map toString)
+  tp.name.toString ++ " : " ++ (" ".intercalate (tp.premises.toList.map toString))
 
 section CoreExtractor
 
