@@ -21,7 +21,7 @@ end String
 
 /-- Find file path from module imported from Mathbin. -/
 def pathFromMathbinImport (mod : Name) : MetaM (Option FilePath) := do 
-  let mathbinPath : System.FilePath := "." / "lean_packages" / "mathlib3port"
+  let mathbinPath : System.FilePath := "." / "lake-packages" / "mathlib3port"
   SearchPath.findWithExt [mathbinPath] "lean" mod
 
 /-- Find file path of JSON with proof sources. -/
