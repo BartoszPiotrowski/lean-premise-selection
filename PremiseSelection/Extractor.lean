@@ -171,6 +171,18 @@ private def extractPremisesFromModule
     fun _ ns => pure (ns, false)
   if user then
     if let some modulePath ← proofSourcePath moduleName then
+      -- Avoid very large files.
+      let mut fileSize := 0
+      if let some synportPath ← pathFromMathbinImport moduleName then 
+        let mdata ← System.FilePath.metadata synportPath
+        fileSize := mdata.byteSize
+      if fileSize == 0 then 
+        dbg_trace s! "Aborted {moduleName}, ported file not found"
+        return ()
+      if fileSize > 1024 * 1024 then -- 1MB 
+        dbg_trace s! "Aborted {moduleName}, size {fileSize}"
+        return ()
+        
       -- If user premises and path found, then create a filter looking at proof
       -- source. If no proof source is found, no filter is applied.
       let data ← IO.FS.readFile modulePath
@@ -180,9 +192,9 @@ private def extractPremisesFromModule
         | Except.error _ => Json.null
       filter := fun thmName premises => do
         if let some source ← proofSource thmName proofsJson then
-         return (filterUserPremises premises source, true)
+          return (filterUserPremises premises source, true)
         else return (premises, false)
-
+    
   -- Go through all theorems in the module, filter premises and write.
   let mut countFoundAndNotEmpty := 0
   let mut countFound := 0
@@ -200,7 +212,7 @@ private def extractPremisesFromModule
         insert filteredData
   if user then
     dbg_trace s!"Total : {countTotal} | Source : {countFound} | Filtered : {countFoundAndNotEmpty}."
-  pure ()
+  return ()
 
 /-- Call `extractPremisesFromModule` with an insertion mechanism that writes
 to the specified files for labels and features. -/
