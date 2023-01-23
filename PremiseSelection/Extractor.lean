@@ -173,7 +173,11 @@ private def extractPremisesFromModule
     if let some modulePath ← proofSourcePath moduleName then
       -- Avoid very large files.
       let mut fileSize := 0
-      if let some synportPath ← pathFromMathbinImport moduleName then
+      let pathFromImport :=
+        if moduleName.getRoot == `Mathbin then
+          pathFromMathbinImport
+        else pathFromMathlibImport
+      if let some synportPath ← pathFromImport moduleName then
         let mdata ← System.FilePath.metadata synportPath
         fileSize := mdata.byteSize
       if fileSize == 0 then
