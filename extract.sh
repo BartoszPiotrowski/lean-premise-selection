@@ -14,7 +14,7 @@ do
     FEATURES=data/output/$f.features 
     LOGS=data/logs/$f.logs
     echo $IMPORT
-    lean --run PremiseSelection/ExtractorRunner.lean $LABELS $FEATURES $IMPORT max-depth=255 min-depth=0 +user +n &> $LOGS &
+    lean --run --memory=4096 --timeout=100000000000 PremiseSelection/ExtractorRunner.lean $LABELS $FEATURES $IMPORT max-depth=255 min-depth=0 +user +n &> $LOGS &
     COUNT=$((COUNT+1))
     if [ $COUNT -eq 12 ]; then
         wait
