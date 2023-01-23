@@ -22,17 +22,17 @@ end String
 /-- Find file path from module imported from Mathbin. -/
 def pathFromMathbinImport (mod : Name) : MetaM (Option FilePath) := do 
   let mathbinPath : System.FilePath := "." / "lake-packages" / "mathlib3port"
-  SearchPath.findWithExt [mathbinPath] "lean" mod
+  SearchPath.findModuleWithExt [mathbinPath] "lean" mod
 
 /-- Find file path from module imported from Mathbin. -/
 def pathFromMathlibImport (mod : Name) : MetaM (Option FilePath) := do 
   let mathbinPath : System.FilePath := "." / "lake-packages" / "mathlib"
-  SearchPath.findWithExt [mathbinPath] "lean" mod
+  SearchPath.findModuleWithExt [mathbinPath] "lean" mod
 
 /-- Find file path of JSON with proof sources. -/
 def proofSourcePath (mod : Name) : MetaM (Option FilePath) := do 
   let mathbinPath : System.FilePath := "." / "data" / "proof_sources"
-  SearchPath.findWithExt [mathbinPath] "json" mod
+  SearchPath.findModuleWithExt [mathbinPath] "json" mod
 
 /-- Given a theorem name and a file path, extract the proof text. -/
 def proofSource (thm : Name) (json : Json) : MetaM (Option String) := do
