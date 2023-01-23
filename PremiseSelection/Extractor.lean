@@ -173,28 +173,28 @@ private def extractPremisesFromModule
     if let some modulePath ← proofSourcePath moduleName then
       -- Avoid very large files.
       let mut fileSize := 0
-      if let some synportPath ← pathFromMathbinImport moduleName then 
+      if let some synportPath ← pathFromMathbinImport moduleName then
         let mdata ← System.FilePath.metadata synportPath
         fileSize := mdata.byteSize
-      if fileSize == 0 then 
+      if fileSize == 0 then
         dbg_trace s! "Aborted {moduleName}, ported file not found"
         return ()
-      if fileSize > 1024 * 1024 then -- 1MB 
+      if fileSize > 1024 * 1024 then -- 1MB
         dbg_trace s! "Aborted {moduleName}, size {fileSize}"
         return ()
-        
+
       -- If user premises and path found, then create a filter looking at proof
       -- source. If no proof source is found, no filter is applied.
       let data ← IO.FS.readFile modulePath
-      let proofsJson := 
-        match Json.parse data with 
-        | Except.ok json => json 
+      let proofsJson :=
+        match Json.parse data with
+        | Except.ok json => json
         | Except.error _ => Json.null
       filter := fun thmName premises => do
         if let some source ← proofSource thmName proofsJson then
           return (filterUserPremises premises source, true)
         else return (premises, false)
-    
+
   -- Go through all theorems in the module, filter premises and write.
   let mut countFoundAndNotEmpty := 0
   let mut countFound := 0
@@ -204,12 +204,18 @@ private def extractPremisesFromModule
     if let some data := data? then
       countTotal := countTotal + 1
       let (filteredPremises, found) ← filter data.name data.premises
-      if found then
-        countFound := countFound + 1
-      if found && !filteredPremises.isEmpty then
+      if !user && !filteredPremises.isEmpty then
         countFoundAndNotEmpty := countFoundAndNotEmpty + 1
-        let filteredData := { data with premises := filteredPremises }
+        let filteredData := { data with premises := data.premises }
         insert filteredData
+      if user then
+          --dbg_trace s!"Name : {data.name} | Source : {countFound} | Filtered : {countFoundAndNotEmpty}."
+          if found then
+            countFound := countFound + 1
+          if found && !filteredPremises.isEmpty then
+            countFoundAndNotEmpty := countFoundAndNotEmpty + 1
+            let filteredData := { data with premises := filteredPremises }
+            insert filteredData
   if user then
     dbg_trace s!"Total : {countTotal} | Source : {countFound} | Filtered : {countFoundAndNotEmpty}."
   return ()
@@ -265,7 +271,7 @@ def extractPremisesFromImportsToFiles
   let mut count := 0
   for (moduleName, moduleData) in Array.zip moduleNamesArray moduleDataArray do
     let isMathImport :=
-      moduleName.getRoot == `Mathbin || moduleName.getRoot == `Mathlib 
+      moduleName.getRoot == `Mathbin || moduleName.getRoot == `Mathlib
     if imports.contains moduleName && isMathImport then
       count := count + 1
       -- extractUserDefinitionsFromModuleToFile moduleName moduleData "./data/all_names"
