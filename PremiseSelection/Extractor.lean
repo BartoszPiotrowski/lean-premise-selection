@@ -183,7 +183,7 @@ private def extractPremisesFromModule
       if fileSize == 0 then
         dbg_trace s! "Aborted {moduleName}, ported file not found"
         return ()
-      if fileSize > 1024 * 1024 then -- 1MB
+      if fileSize > 2 * 1024 * 1024 then -- 2MB
         dbg_trace s! "Aborted {moduleName}, size {fileSize}"
         return ()
 
