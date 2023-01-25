@@ -21,8 +21,8 @@ lean_exe Train where
   root := `Scripts.Train
 
 @[default_target]
-lean_exe LoadAndPredict where
-  root := `Scripts.LoadAndPredict
+lean_exe Predict where
+  root := `Scripts.Predict
 
 @[default_target]
 lean_exe KnnPredict where
