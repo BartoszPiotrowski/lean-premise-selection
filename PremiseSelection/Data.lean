@@ -45,6 +45,11 @@ def loadLabeled (features : String) (labels : String) : IO (List Example) := do
   let labeled := fun (f, l) => labeled f l
   return featuresLabels.map labeled
 
+def loadUnlabeled (features : String) : IO (List Example) := do
+  let features ← load features
+  let unlabeled := fun f => unlabeled f
+  return features.map unlabeled
+
 def randomFeature (examples : List Example) : IO String := do
     let randomExample_1 := (← chooseRandom examples).features
     let randomExample_2 := (← chooseRandom examples).features

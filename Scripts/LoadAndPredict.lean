@@ -3,14 +3,13 @@ import PremiseSelection
 open PremiseSelection
 
 def main (args : List String) : IO Unit := do
-  let forest := args.get!                0
-  let test_features := args.get!         1
-  let test_labels := args.get!           2
-  let test_preds_save_path := args.get!  3
+  let forest               := args.get! 0
+  let test_features        := args.get! 1
+  let test_preds_save_path := args.get! 2
   IO.println s!"Loading data..."
   let my_forest ← loadFromFile forest
   IO.println s!"Loading forest..."
-  let test_data ← loadLabeled test_features test_labels
+  let test_data ← loadUnlabeled test_features
   let avg_depth := average (my_forest.map (fun t => Float.ofNat t.depth))
   IO.println s!"Average depth of a tree: {avg_depth}"
   IO.println s!"Classifying test data..."
