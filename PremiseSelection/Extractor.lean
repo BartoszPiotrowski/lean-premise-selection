@@ -26,12 +26,10 @@ instance : ToJson TheoremPremises where
 instance : ToString TheoremPremises where
   toString := Json.pretty ∘ toJson
 
-/-- Used to choose the feature format: nameCounts and/or bigramCounts and/or
-subexpressions -/
+/-- Used to choose the feature format: nameCounts and/or bigramCounts -/
 structure FeatureFormat where
   n : Bool := true
   b : Bool := false
-  s : Bool := true
 deriving Inhabited
 
 /-- Structure to put together all the user options: max expression depth, filter
@@ -61,12 +59,6 @@ def getFeatures (tp : TheoremPremises) (format : FeatureFormat) : String :=
       for arg in tp.argumentsFeatures do
         for (b, _) in arg.bigramCounts do
           result := result.push s!"H:{b}"
-    if format.s then
-      for (s, _) in tp.features.subexpressions do
-        result := result.push <| (s!"T:{s}").trim
-      for arg in tp.argumentsFeatures do
-        for (s, _) in arg.subexpressions do
-          result := result.push <| (s!"H:{s}").trim
     return " ".intercalate result.data
 
 /-- Premises are simply concatenated. -/
