@@ -131,6 +131,10 @@ def visitFeature (e : Expr) : WriterT StatementFeatures MetaM Unit  := do
                     if let some n3 := getHeadName? arg then
                       tell <| StatementFeatures.mkTrigram n1 n2 n3
               )
+        for p in args.toList.allPairs do
+          if let some n2 := getHeadName? p.1 then
+            if let some n3 := getHeadName? p.2 then
+              tell <| StatementFeatures.mkTrigram n1 n2 n3
     )
   return ()
 

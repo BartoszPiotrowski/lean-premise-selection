@@ -29,7 +29,8 @@ instance : ToString TheoremPremises where
 /-- Used to choose the feature format: nameCounts and/or bigramCounts -/
 structure FeatureFormat where
   n : Bool := true
-  b : Bool := false
+  b : Bool := true
+  t : Bool := true
 deriving Inhabited
 
 /-- Structure to put together all the user options: max expression depth, filter
@@ -59,6 +60,12 @@ def getFeatures (tp : TheoremPremises) (format : FeatureFormat) : String :=
       for arg in tp.argumentsFeatures do
         for (b, _) in arg.bigramCounts do
           result := result.push s!"H:{b}"
+    if format.t then
+      for (t, _) in tp.features.trigramCounts do
+        result := result.push s!"T:{t}"
+      for arg in tp.argumentsFeatures do
+        for (t, _) in arg.trigramCounts do
+          result := result.push s!"H:{t}"
     return " ".intercalate result.data
 
 /-- Premises are simply concatenated. -/
@@ -102,6 +109,8 @@ private def extractPremisesFromConstantInfo
         if (← inferType argType).isProp then
           let argFeats ← getStatementFeatures argType
           if ! argFeats.bigramCounts.isEmpty then
+            argsFeats := argsFeats ++ [argFeats]
+          if ! argFeats.trigramCounts.isEmpty then
             argsFeats := argsFeats ++ [argFeats]
       -- Heuristic that can be used to ignore simple theorems and to avoid long
       -- executions for deep theorems.

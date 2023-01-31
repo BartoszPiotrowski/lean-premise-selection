@@ -113,6 +113,13 @@ def flattenUnordered (l : List (List β)) : List β :=
     | h :: t => aux (appendUnordered acc h) t
   aux [] l
 
+def allPairs (l : List α) : List (α × α) :=
+  let rec aux acc rest :=
+    match rest with
+    | [] => acc
+    | h :: t => aux (appendUnordered acc (t.map (fun x => (h, x)))) t
+  aux [] l
+
 end List
 
 def shuffle {α} (l : List α) : IO (List α) := do

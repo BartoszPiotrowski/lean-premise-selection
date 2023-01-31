@@ -4,12 +4,12 @@ open Lean Lean.Meta PremiseSelection
 
 /-- Run this file to extract premises as follows:
 
-  `lean --run PremiseSelection/ExtractorRunner.lean data/test.labels data/test.features data/modules [min-depth=x] [max-depth=y] [+user] [+n] [+b] [+s]`
+  `lean --run PremiseSelection/ExtractorRunner.lean data/test.labels data/test.features data/modules [min-depth=x] [max-depth=y] [+user] [+n] [+b] [+t]`
 
 The first argument is the path to the labels file, the second argument is the
 path to the features file, the third argument is the path to the modules file (a
 file consisting of a list of module names, one per line). Adding the option
-`+user` will try to filter user premises. Options `+n`, `+b`, and `+s` will
+`+user` will try to filter user premises. Options `+n`, `+b`, and `+t` will
 change the format of the features.
 
 This is quite a heavy task so you might need to increase memory and time out,
@@ -54,10 +54,11 @@ unsafe def main (args : List String) : IO Unit := do
   -- * `+b` = biagramCounts.
   let n := (args.drop 3).contains "+n"
   let b := (args.drop 3).contains "+b"
-  if !n && !b then
-    panic "No features selected. Add `+n` or `+b` to the command."
+  let t := (args.drop 3).contains "+t"
+  if !n && !b && !t then
+    panic "No features selected. Add `+n`, `+b` or `+t` to the command."
 
-  let format := FeatureFormat.mk n b s
+  let format := FeatureFormat.mk n b t
 
   let options : UserOptions := ⟨minDepth, maxDepth, user, format⟩
 
