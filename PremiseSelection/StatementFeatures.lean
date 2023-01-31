@@ -126,7 +126,7 @@ def visitFeature (e : Expr) : WriterT StatementFeatures MetaM Unit  := do
             tell <| StatementFeatures.mkBigram n1 n2
             if arg.isApp then
               arg.withApp (fun f args => do
-                if let some n3 := immediateName f then
+                if let some n2 := immediateName f then
                   for arg in args do
                     if let some n3 := getHeadName? arg then
                       tell <| StatementFeatures.mkTrigram n1 n2 n3
