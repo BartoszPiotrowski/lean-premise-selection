@@ -43,8 +43,7 @@ def Tree.add (initThreshold : Float) (optimLevel : Float)
     | Leaf (label, examples) =>
       let examples := e :: examples
       if initCond initThreshold examples
-      --then makeNewNode optimLevel examples
-      then dbg_trace "{examples.length}"; timeit "makeNewNode" (makeNewNode optimLevel examples)
+      then makeNewNode optimLevel examples
       else return Leaf (label, examples)
   loop tree
 
