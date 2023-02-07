@@ -26,7 +26,8 @@ instance : ToJson TheoremPremises where
 instance : ToString TheoremPremises where
   toString := Json.pretty ∘ toJson
 
-/-- Used to choose the feature format: nameCounts and/or bigramCounts -/
+/-- Used to choose the feature format: nameCounts and/or bigramCounts and/or 
+trigramCounts -/
 structure FeatureFormat where
   n : Bool := true
   b : Bool := true
@@ -70,14 +71,15 @@ def getFeatures (tp : TheoremPremises) (format : FeatureFormat) : String :=
 
 /-- Premises are simply concatenated. -/
 def getLabels (tp : TheoremPremises) : String :=
-  tp.name.toString ++ " : " ++ (" ".intercalate (tp.premises.toList.map toString))
+  let thmName := tp.name.toString
+  thmName ++ " : " ++ (" ".intercalate (tp.premises.toList.map toString))
 
 section CoreExtractor
 
 /-- Given a name `n`, if it qualifies as a premise, it returns `[n]`, otherwise
 it returns the empty list. -/
 private def getTheoremFromName (n : Name) : MetaM (Multiset Name) := do
-  -- NOTE: Get all consts whose type is of type Prop.
+  -- Get all consts whose type is of type Prop.
   if let some cinfo := (← getEnv).find? n then
     if (← inferType cinfo.type).isProp then
       pure (Multiset.singleton n)
@@ -172,7 +174,7 @@ private def extractPremisesFromModule
     fun _ ns => pure (ns, false)
   if user then
     if let some modulePath ← proofSourcePath moduleName then
-      -- Avoid very large files.
+      -- Avoid very large files. In particular mathbin files over 2MB.
       let mut fileSize := 0
       let pathFromImport :=
         if moduleName.getRoot == `Mathbin then
@@ -184,7 +186,7 @@ private def extractPremisesFromModule
       if fileSize == 0 then
         dbg_trace s! "Aborted {moduleName}, ported file not found"
         return ()
-      if fileSize > 2 * 1024 * 1024 then -- 2MB
+      if fileSize > 2 * 1024 * 1024 then
         dbg_trace s! "Aborted {moduleName}, size {fileSize}"
         return ()
 
@@ -214,7 +216,6 @@ private def extractPremisesFromModule
         let filteredData := { data with premises := data.premises }
         insert filteredData
       if user then
-          --dbg_trace s!"Name : {data.name} | Source : {countFound} | Filtered : {countFoundAndNotEmpty}."
           if found then
             countFound := countFound + 1
           if found && !filteredPremises.isEmpty then
@@ -222,7 +223,12 @@ private def extractPremisesFromModule
             let filteredData := { data with premises := filteredPremises }
             insert filteredData
   if user then
-    dbg_trace s!"Total : {countTotal} | Source : {countFound} | Filtered : {countFoundAndNotEmpty}."
+    dbg_trace s!"Total : {countTotal}"
+    dbg_trace s!"Found in source : {countFound}"
+    dbg_trace s!"Found and not empty : {countFoundAndNotEmpty}"
+  else 
+    dbg_trace s!"Total : {countTotal}"
+    dbg_trace s!"Not empty : {countFoundAndNotEmpty}"
   return ()
 
 /-- Call `extractPremisesFromModule` with an insertion mechanism that writes
@@ -279,7 +285,8 @@ def extractPremisesFromImportsToFiles
       moduleName.getRoot == `Mathbin || moduleName.getRoot == `Mathlib
     if imports.contains moduleName && isMathImport then
       count := count + 1
-      -- extractUserDefinitionsFromModuleToFile moduleName moduleData "./data/all_names"
+      -- extractUserDefinitionsFromModuleToFile 
+      --   moduleName moduleData "./data/all_names"
       extractPremisesFromModuleToFiles
         moduleName moduleData labelsPath featuresPath userOptions
       dbg_trace s!"count = {count}."
