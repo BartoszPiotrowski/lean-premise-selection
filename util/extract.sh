@@ -7,6 +7,7 @@ export LEAN_PATH=$LEAN_PATH:./lake-packages/std/build/lib
 export LEAN_PATH=$LEAN_PATH:./lake-packages/Qq/build/lib 
 export LEAN_PATH=$LEAN_PATH:./lake-packages/Aesop/build/lib 
 COUNT=0
+
 for f in $(ls data/imports)
 do 
     IMPORT=data/imports/$f
