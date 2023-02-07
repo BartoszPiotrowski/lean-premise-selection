@@ -1,7 +1,6 @@
 /build
-/lean_packages/*
-lake-packages
-!/lean_packages/manifest.json
+/lake-packages
 /tmp
+/widget/package-lock.json.trace
 /data
-widget/package-lock.json.trace
+!/data/all_imports
