@@ -4,7 +4,9 @@ open Lean Lean.Meta PremiseSelection
 
 /-- Run this file to extract premises as follows:
 
-  `lean --run PremiseSelection/ExtractorRunner.lean data/test.labels data/test.features data/modules [min-depth=x] [max-depth=y] [+user] [+n] [+b] [+t]`
+  `lean --run PremiseSelection/ExtractorRunner.lean
+    data/test.labels data/test.features data/modules 
+    [min-depth=x] [max-depth=y] [+user] [+n] [+b] [+t]`
 
 The first argument is the path to the labels file, the second argument is the
 path to the features file, the third argument is the path to the modules file (a
@@ -52,6 +54,7 @@ unsafe def main (args : List String) : IO Unit := do
   -- Flags for features:
   -- * `+n` = nameCounts.
   -- * `+b` = biagramCounts.
+  -- * `+t` = trigramCounts.
   let n := (args.drop 3).contains "+n"
   let b := (args.drop 3).contains "+b"
   let t := (args.drop 3).contains "+t"
