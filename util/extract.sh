@@ -39,18 +39,23 @@ export LEAN_PATH=$LEAN_PATH:./lake-packages/std/build/lib
 export LEAN_PATH=$LEAN_PATH:./lake-packages/Qq/build/lib 
 export LEAN_PATH=$LEAN_PATH:./lake-packages/Aesop/build/lib 
 
+LEANOPTS="--run --memory=4096 --timeout=100000000000"
+RUNNER="PremiseSelection/ExtractorRunner.lean"
+USEROPTS="max-depth=255 min-depth=0 $@"
+
 COUNT=0
 
 for f in $(ls data/imports)
 do 
-    IMPORT=data/imports/$f
+    IMPORTS=data/imports/$f
     LABELS=data/output/$f.labels
     FEATURES=data/output/$f.features 
     LOGS=data/logs/$f.logs
-    echo $IMPORT
-    lean --run --memory=4096 --timeout=100000000000 \ 
-        PremiseSelection/ExtractorRunner.lean $LABELS $FEATURES $IMPORT \ 
-        max-depth=255 min-depth=0 $@ &> $LOGS &
+    echo "Extracting from" $IMPORTS 
+    
+    # Call runner.
+    lean $LEANOPTS $RUNNER $LABELS $FEATURES $IMPORTS $USEROPTS &> $LOGS &
+
     COUNT=$((COUNT+1))
     if [ $COUNT -eq 12 ]; then
         wait
