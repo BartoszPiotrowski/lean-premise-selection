@@ -1,4 +1,36 @@
 #!/bin/bash
+
+# Download proof sources.
+
+if [ ! -d data/proof_sources ]; then
+    mkdir data/proof_sources
+    cd data/proof_sources 
+    git clone https://github.com/ramonfmir/mathport.git
+    mv mathport/Outputs/src/mathbin/Mathbin .
+    cp -r Mathbin Mathlib
+    rm -rf mathport 
+    cd ../..
+fi
+
+# Split imports.
+
+if [ ! -d data/imports ]; then
+    mkdir data/imports
+    cd data/imports
+    split -l 40 ../all_imports import
+    cd ../..
+fi
+
+# Run the extractor in parallel.
+
+if [ ! -d data/output ]; then
+    mkdir data/output
+fi
+
+if [ ! -d data/logs ]; then
+    mkdir data/logs
+fi
+
 export LEAN_PATH=./build/lib
 export LEAN_PATH=$LEAN_PATH:./lake-packages/mathlib3port/build/lib
 export LEAN_PATH=$LEAN_PATH:./lake-packages/mathlib/build/lib
@@ -22,4 +54,8 @@ do
         COUNT=0
     fi
 done
-echo "Done"
+
+# Combine the results.
+
+cat data/output/*.labels > data/output.labels
+cat data/output/*.features > data/output.features
