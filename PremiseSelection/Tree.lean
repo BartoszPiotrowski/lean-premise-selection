@@ -17,12 +17,12 @@ open Direction
 def leaf (e : Example) :=
   Leaf (e.label, [e])
 
-def makeNewNode (optimLevel : Float) (examples : List Example) : IO Tree := do
+def makeNewNode (optimLevel : Float) (label : Label) (examples : List Example) : IO Tree := do
   let rule ← if optimLevel ≤ 0 then randomRule examples
     else optimizedRule optimLevel examples
   let (examplesL, examplesR) := split rule examples
   if examplesL.isEmpty || examplesR.isEmpty
-  then return Leaf ((← examples.chooseRandom).label, examples)
+  then return Leaf (label, examples)
   else return Node (rule,
     Leaf (unionOfLabels examplesL, examplesL),
     Leaf (unionOfLabels examplesR, examplesR))
@@ -42,8 +42,9 @@ def Tree.add (initThreshold : Float) (optimLevel : Float)
       | Right => do return Node (fea, treeL, ← loop treeR)
     | Leaf (label, examples) =>
       let examples := e :: examples
+      let label := union [label, e.label]
       if initCond initThreshold examples
-      then makeNewNode optimLevel examples
+      then makeNewNode optimLevel label examples
       else return Leaf (label, examples)
   loop tree
 
