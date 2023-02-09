@@ -48,25 +48,18 @@ be put together in a sequence tagged with `T` for theorem or `H` for
 hypotheses.  -/
 def getFeatures (tp : TheoremPremises) (format : FeatureFormat) : String :=
   Id.run <| do
+    let statementF := tp.features
+    let argsF := tp.argumentsFeatures
     let mut result : Array String := #[]
     if format.n then
-      for (n, _) in tp.features.nameCounts do
-        result := result.push s!"T:{n}"
-      for arg in tp.argumentsFeatures do
-        for (n, _) in arg.nameCounts do
-          result := result.push s!"H:{n}"
+      result := result ++ statementF.nameCounts.toTFeatures ++ 
+        argsF.concatMap (Multiset.toHFeatures ∘ StatementFeatures.nameCounts)
     if format.b then
-      for (b, _) in tp.features.bigramCounts do
-        result := result.push s!"T:{b}"
-      for arg in tp.argumentsFeatures do
-        for (b, _) in arg.bigramCounts do
-          result := result.push s!"H:{b}"
+      result := result ++ statementF.bigramCounts.toTFeatures ++ 
+        argsF.concatMap (Multiset.toHFeatures ∘ StatementFeatures.bigramCounts)
     if format.t then
-      for (t, _) in tp.features.trigramCounts do
-        result := result.push s!"T:{t}"
-      for arg in tp.argumentsFeatures do
-        for (t, _) in arg.trigramCounts do
-          result := result.push s!"H:{t}"
+      result := result ++ statementF.trigramCounts.toTFeatures ++ 
+        argsF.concatMap (Multiset.toHFeatures ∘ StatementFeatures.trigramCounts)
     return " ".intercalate result.data
 
 /-- Premises are simply concatenated. -/
