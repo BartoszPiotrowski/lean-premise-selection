@@ -186,21 +186,21 @@ private def extractPremisesFromModule
         if let some source ← proofSource thmName proofsJson then
           return (filterUserPremises premises source, true)
         else return (premises, false)
-    -- Mathlib-only filter.
-    else if mathlib then 
-      let allNamesPath := "data/all_names"
-      filter := fun _ premises => do
-        let mut filteredPremises : Multiset Name := ∅
-        for (premise, count) in premises do
-          let premiseComponents := premise.componentsRev 
-          if premiseComponents.length > 0 then 
-            let premiseNameLast := toString premiseComponents.head!
-            let output ← IO.Process.output { 
-              cmd := "grep", 
-              args := #[premiseNameLast, allNamesPath] }
-            if output.exitCode == 0 && !output.stdout.isEmpty then
-              filteredPremises := filteredPremises.insert premise count
-        return (filteredPremises, true)
+  -- Mathlib-only filter.
+  else if mathlib then
+    let allNamesPath := "data/all_names"
+    filter := fun _ premises => do
+      let mut filteredPremises : Multiset Name := ∅
+      for (premise, count) in premises do
+        let premiseComponents := premise.componentsRev 
+        if premiseComponents.length > 0 then 
+          let premiseNameLast := toString premiseComponents.head!
+          let output ← IO.Process.output { 
+            cmd := "grep", 
+            args := #[premiseNameLast, allNamesPath] }
+          if output.exitCode == 0 && !output.stdout.isEmpty then
+            filteredPremises := filteredPremises.insert premise count
+      return (filteredPremises, true)
 
   -- Go through all theorems in the module, filter premises and write.
   let mut countFoundAndNotEmpty := 0
@@ -247,7 +247,9 @@ def extractPremisesFromModuleToFiles
   let minDepth := userOptions.minDepth
   let maxDepth := userOptions.maxDepth
   let user := userOptions.user
-  extractPremisesFromModule insert moduleName moduleData minDepth maxDepth user
+  let mathlib := userOptions.mathlib
+  extractPremisesFromModule 
+    insert moduleName moduleData minDepth maxDepth user mathlib
 
 /-- Go through the whole module and find the defininions that appear in the
 corresponding source file. This was used to generate `all_names`. -/
