@@ -26,21 +26,8 @@ def suggestPremisesTactic : Tactic := fun stx => do
   let hyps_features ← getArgsFeatures hyps
 
   let mut result : Array String := #[]
-  for (n, _) in target_features.nameCounts do
-    result := result.push s!"T:{n}"
-  for hyp_features in hyps_features do
-    for (n, _) in hyp_features.nameCounts do
-      result := result.push s!"H:{n}"
-  for (n, _) in target_features.bigramCounts do
-    result := result.push s!"T:{n}"
-  for hyp_features in hyps_features do
-    for (n, _) in hyp_features.bigramCounts do
-      result := result.push s!"H:{n}"
-  for (n, _) in target_features.trigramCounts do
-    result := result.push s!"T:{n}"
-  for hyp_features in hyps_features do
-    for (n, _) in hyp_features.trigramCounts do
-      result := result.push s!"H:{n}"
+  result := result ++ target_features.toTFeatures
+  result := result ++ hyps_features.concatMap StatementFeatures.toHFeatures
       
   let features := result.data
   dbg_trace features

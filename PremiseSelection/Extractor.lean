@@ -11,7 +11,7 @@ open Lean Lean.Elab Lean.Elab.Term Lean.Elab.Command Lean.Meta System
 structure TheoremPremises where
   name              : Name
   features          : StatementFeatures
-  argumentsFeatures : List StatementFeatures
+  argumentsFeatures : Array StatementFeatures
   premises          : Multiset Name
 
 instance : ToJson TheoremPremises where
