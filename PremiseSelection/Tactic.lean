@@ -22,14 +22,11 @@ def suggestPremisesTactic : Tactic := fun stx => do
       hyps := hyps ++ [hyp]
     return hyps
 
-  let target_features ← getStatementFeatures target
-  let hyps_features ← getArgsFeatures hyps
+  let targetFeatures ← getStatementFeatures target
+  let hypsFeatures ← getArgsFeatures hyps
 
-  let mut result : Array String := #[]
-  result := result ++ target_features.toTFeatures
-  result := result ++ hyps_features.concatMap StatementFeatures.toHFeatures
-      
-  let features := result.data
+  let features := Array.data <| targetFeatures.toTFeatures ++
+    hypsFeatures.concatMap StatementFeatures.toHFeatures
   dbg_trace features
   
   let e := unlabeled features
