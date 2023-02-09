@@ -19,7 +19,7 @@ def suggestPremisesTactic : Tactic := fun stx => do
   let m ← m.toString
   let e := unlabeled m.splitOn
   let p := rankingWithScores (← trainedForest) e
-  let p : List Item := p.map (fun (name, score) => {name, score})
+  let p : List Item := p.map (fun (name, score) => {name := name.toName, score})
   saveWidget stx p.toArray
   return ()
 

@@ -6,6 +6,7 @@ interface Item {
   name : string
   score : number
   expr?: CodeWithInfos
+  error?: string
 }
 
 interface Props {
@@ -32,16 +33,20 @@ export default function (props: Props) {
   let items : Item[] = []
   let msg : any | undefined = undefined
   if (res.state === 'loading') {
-    items = props.items
+    // items = props.items
+    msg = <>Loading</>
   } else if (res.state === 'rejected') {
     msg = <>Error: {JSON.stringify(res.error)}</>
+    items = []
   } else if (res.state === 'resolved') {
     items = res.value
+    msg = <>Loaded</>
   }
   return <div>
+    Hello!
     <table>
       <tbody>
-        {items.map(x => <ViewItem key={x.name} {...x}/>)}
+        {items.slice(0, 10).map(x => <ViewItem key={x.name} {...x}/>)}
       </tbody>
     </table>
     {msg && <span>{msg}</span>}
@@ -58,5 +63,6 @@ function ViewItem(props : Item) {
   return <tr>
     <td>{n}</td>
     <td>{props.score}</td>
+    <td>{props.error}</td>
   </tr>
 }
