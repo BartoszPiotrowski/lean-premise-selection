@@ -16,6 +16,10 @@ The user can ask for advice from the trained model by using the provided tactic
 theorem at hand. The user may also extract their own training data and train
 their own machine learning model for premise selection.
 
+# Getting started
+
+Make sure that elan is installed.
+
 # Building the widget
 
 In order to see the interactive list of premises you need to

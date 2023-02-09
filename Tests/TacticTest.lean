@@ -1,6 +1,7 @@
 import Mathlib
 import Mathlib.Algebra.Group.Defs
 import PremiseSelection.Tactic
+import PremiseSelection.Widget
 
 open PremiseSelection
 

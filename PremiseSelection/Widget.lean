@@ -29,7 +29,8 @@ structure WidgetProps where
 
 
 structure ItemData extends Item where
-  expr? : Option CodeWithInfos
+  expr? : Option CodeWithInfos := none
+  error?: Option String := none
   deriving RpcEncodable, Inhabited
 
 structure GetItemArgs where
@@ -40,6 +41,27 @@ structure GetItemArgs where
 instance : Alternative RequestM where
   failure _ := throw <| RequestError.internalError "failure"
   orElse a b c := OrElse.orElse (a c) (fun _ => b () c)
+
+def mkFun (constName : Name) : MetaM (Expr) := do
+  let cinfo ← getConstInfo constName
+  let us ← cinfo.levelParams.mapM fun _ => Lean.Meta.mkFreshLevelMVar
+  let f := mkConst constName us
+  return f
+
+
+def mapRoot (f : Name → Name) : Name → Name
+  | .anonymous             => .anonymous
+  | n@(.str .anonymous _) => f n
+  | n@(.num .anonymous _) => f n
+  | .str n x             => .str (mapRoot f n) x
+  | .num n x             => .num (mapRoot f n) x
+
+/-- Some of the suggestions don't have their names capitalised.
+This is a temporary hack to try capitalising.
+-/
+def capitalizeFirstLetter : Name → Name :=
+  mapRoot .capitalize
+
 
 open Lean Server RequestM in
 @[server_rpc_method]
@@ -60,11 +82,15 @@ def getItems (args : GetItemArgs) : RequestM (RequestTask (Array ItemData)) := d
       let lctx := lctx.sanitizeNames.run' { options := (← getOptions) }
       Meta.withLCtx lctx mvarDecl.localInstances do
         args.items.mapM (fun item => do
-          let expr? ← optional do
-            let e ← Lean.Meta.mkAppM item.name #[]
+          try
+            let e ← mkFun item.name <|> (mkFun <| capitalizeFirstLetter item.name)
             let p ← ppExprTagged e
-            return p
-          return {item with expr?}
+            return {item with expr? := p}
+          catch
+            | e =>
+              let msg ← e.toMessageData.toString
+              return {item with error? := some msg}
+
         )
 
 
