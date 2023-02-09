@@ -103,7 +103,7 @@ private def extractPremisesFromConstantInfo
   (minDepth : UInt32 := 0) (maxDepth : UInt32 := 255)
   : ConstantInfo → MetaM (Option TheoremPremises)
   | ConstantInfo.thmInfo { name := n, type := ty, value := v, .. } => do
-      let (thmFeats, argsFeats) ← getThmAndArgsFeats ty
+      let (thmFeats, argsFeats) ← getThmAndArgsFeatures ty
       -- Heuristic that can be used to ignore simple theorems and to avoid long
       -- executions for deep theorems.
       if minDepth <= v.approxDepth && v.approxDepth < maxDepth then
