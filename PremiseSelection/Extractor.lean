@@ -40,6 +40,7 @@ structure UserOptions where
   minDepth : UInt32        := 0
   maxDepth : UInt32        := 255
   user     : Bool          := false
+  mathlib  : Bool          := false
   format   : FeatureFormat := default
 deriving Inhabited
 
@@ -150,11 +151,12 @@ and inserts the resulting data. -/
 private def extractPremisesFromModule
   (insert : TheoremPremises → IO Unit)
   (moduleName : Name) (moduleData : ModuleData)
-  (minDepth maxDepth : UInt32) (user : Bool := false)
+  (minDepth maxDepth : UInt32) (user mathlib : Bool := false)
   : MetaM Unit := do
   dbg_trace s!"Extracting premises from {moduleName}."
   let mut filter : Name → Multiset Name → MetaM (Multiset Name × Bool) :=
     fun _ ns => pure (ns, false)
+  -- User filter.
   if user then
     if let some modulePath ← proofSourcePath moduleName then
       -- Avoid very large files. In particular mathbin files over 2MB.
@@ -184,6 +186,21 @@ private def extractPremisesFromModule
         if let some source ← proofSource thmName proofsJson then
           return (filterUserPremises premises source, true)
         else return (premises, false)
+    -- Mathlib-only filter.
+    else if mathlib then 
+      let allNamesPath := "data/all_names"
+      filter := fun _ premises => do
+        let mut filteredPremises : Multiset Name := ∅
+        for (premise, count) in premises do
+          let premiseComponents := premise.componentsRev 
+          if premiseComponents.length > 0 then 
+            let premiseNameLast := toString premiseComponents.head!
+            let output ← IO.Process.output { 
+              cmd := "grep", 
+              args := #[premiseNameLast, allNamesPath] }
+            if output.exitCode == 0 && !output.stdout.isEmpty then
+              filteredPremises := filteredPremises.insert premise count
+        return (filteredPremises, true)
 
   -- Go through all theorems in the module, filter premises and write.
   let mut countFoundAndNotEmpty := 0

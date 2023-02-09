@@ -6,7 +6,7 @@ open Lean Lean.Meta PremiseSelection
 
   `lean --run PremiseSelection/ExtractorRunner.lean
     data/test.labels data/test.features data/modules 
-    [min-depth=x] [max-depth=y] [+user] [+n] [+b] [+t]`
+    [min-depth=x] [max-depth=y] [+user] [+mathlib] [+n] [+b] [+t]`
 
 The first argument is the path to the labels file, the second argument is the
 path to the features file, the third argument is the path to the modules file (a
@@ -50,6 +50,12 @@ unsafe def main (args : List String) : IO Unit := do
 
   -- Add `+user` to the command to apply the user filter.
   let user := (args.drop 3).contains "+user"
+  
+  -- Add `+mathlib` to the command to apply the mathlib filter.
+  let mathlib := (args.drop 3).contains "+mathlib"
+    
+  if user && mathlib then
+    panic "Cannot use both user and mathlib filters."
 
   -- Flags for features:
   -- * `+n` = nameCounts.
@@ -63,7 +69,7 @@ unsafe def main (args : List String) : IO Unit := do
 
   let format := FeatureFormat.mk n b t
 
-  let options : UserOptions := ⟨minDepth, maxDepth, user, format⟩
+  let options : UserOptions := ⟨minDepth, maxDepth, user, mathlib, format⟩
 
   let mut moduleNames := #[]
   for moduleNameStr in ← IO.FS.lines selectedModules do
