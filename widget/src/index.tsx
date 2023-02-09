@@ -20,7 +20,9 @@ interface GetItemsArgs {
 }
 
 async function getItems(rs : RpcSessionAtPos, args : GetItemsArgs) : Promise<Item[]> {
-  return rs.call<GetItemsArgs, Item[]>('PremiseSelection.getItems', args)
+  const items =  rs.call<GetItemsArgs, Item[]>('PremiseSelection.getItems', args)
+  // await new Promise(r => setTimeout(r, 2000));
+  return items;
 }
 
 export default function (props: Props) {
@@ -29,8 +31,8 @@ export default function (props: Props) {
     return <div>No premises found!</div>
   }
   const rs = React.useContext(RpcContext)
-  const res = useAsync(() => getItems(rs, props), [rs, pos])
-  let items : Item[] = []
+  const res = useAsync(() => getItems(rs, props), [rs, pos,])
+  let items : Item[] = props.items || []
   let msg : any | undefined = undefined
   if (res.state === 'loading') {
     // items = props.items
@@ -43,7 +45,6 @@ export default function (props: Props) {
     msg = <>Loaded</>
   }
   return <div>
-    Hello!
     <table>
       <tbody>
         {items.slice(0, 10).map(x => <ViewItem key={x.name} {...x}/>)}
