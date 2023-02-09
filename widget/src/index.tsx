@@ -7,6 +7,8 @@ interface Item {
   score : number
   expr?: CodeWithInfos
   error?: string
+  tactic?: string
+  tacticResult?: CodeWithInfos
 }
 
 interface Props {
@@ -14,15 +16,36 @@ interface Props {
   pos : DocumentPosition
 }
 
-interface GetItemsArgs {
-  items : Item[]
+interface GetItemArgs {
+  item : Item
   pos : DocumentPosition
 }
 
-async function getItems(rs : RpcSessionAtPos, args : GetItemsArgs) : Promise<Item[]> {
-  const items =  rs.call<GetItemsArgs, Item[]>('PremiseSelection.getItems', args)
+async function getItem(rs : RpcSessionAtPos, args : GetItemArgs) : Promise<Item> {
+  const items =  rs.call<GetItemArgs, Item>('PremiseSelection.getItem', args)
   // await new Promise(r => setTimeout(r, 2000));
   return items;
+}
+
+interface Update {
+  kind: 'update'
+  index : number
+  item : Item
+}
+
+interface Reset {
+  kind:'reset'
+  items : Item[]
+}
+
+function reducer(state : Item[], action : Update | Reset) {
+  if (action.kind === 'update') {
+    state = [...state];
+    state[action.index] = action.item;
+    return state;
+  } else {
+    return action.items
+  }
 }
 
 export default function (props: Props) {
@@ -30,24 +53,30 @@ export default function (props: Props) {
   if (props.items.length === 0) {
     return <div>No premises found!</div>
   }
+  const [items, update] = React.useReducer(reducer, props.items || [])
+  const [status, setStatus] = React.useState('init')
+  const r = React.useRef(0)
   const rs = React.useContext(RpcContext)
-  const res = useAsync(() => getItems(rs, props), [rs, pos,])
-  let items : Item[] = props.items || []
-  let msg : any | undefined = undefined
-  if (res.state === 'loading') {
-    // items = props.items
-    msg = <>Loading</>
-  } else if (res.state === 'rejected') {
-    msg = <>Error: {JSON.stringify(res.error)}</>
-    items = []
-  } else if (res.state === 'resolved') {
-    items = res.value
-    msg = <>Loaded</>
+  async function e() {
+    r.current += 1
+    const id = r.current
+    update({kind: 'reset', items: props.items})
+    setStatus(`loading ${id}`)
+    for (let i = 0; i < items.length; i++) {
+      const item = await getItem(rs, {item : props.items[i], pos})
+      if (r.current !== id) {
+        return
+      }
+      update({kind: 'update', index: i, item})
+    }
+    setStatus(`done ${id}`)
   }
+  React.useEffect(() => {e()}, [rs, props.items.map(i => `${i.name}-${i.score}`).join(',')])
+  let msg : any | undefined = <>{status}</>
   return <div>
     <table>
       <tbody>
-        {items.slice(0, 10).map(x => <ViewItem key={x.name} {...x}/>)}
+        {items.map(x => <ViewItem key={x.name} {...x}/>)}
       </tbody>
     </table>
     {msg && <span>{msg}</span>}
@@ -62,8 +91,9 @@ function ViewItem(props : Item) {
     n = <code style={{ overflowWrap: "anywhere" }}>{props.name}</code>
   }
   return <tr>
-    <td>{n}</td>
     <td>{props.score}</td>
-    <td>{props.error}</td>
+    <td>{n}</td>
+    <td>{props.error ?? <code>{props.tactic}</code>}</td>
+    <td>{props.tacticResult && <code style={{color: "var(--vscode-textLink-activeForeground)"}}><InteractiveCode fmt={props.tacticResult}/></code>}</td>
   </tr>
 }

@@ -11,12 +11,7 @@ def trainedForest := loadFromFile "data/forest.n+b.user.user-filter.mathlib4"
 
 syntax (name := suggestPremises) "suggest_premises" : tactic
 
-@[tactic suggestPremises]
-def suggestPremisesTactic : Tactic := fun stx => do
-  --let g ← getMainGoal
-  --let m := MessageData.ofGoal g
-  --let m ← addMessageContext m
-  --let m ← m.toString
+def getFeatures := do
   let t ← getMainTarget
   let hyps_features ← withMainContext (do
     let ctx ← getLCtx
@@ -42,12 +37,15 @@ def suggestPremisesTactic : Tactic := fun stx => do
     result := result.push s!"T:{n}"
   for (n, _) in hyps_features.trigramCounts do
     result := result.push s!"H:{n}"
-  let features := result.data
-  dbg_trace features
+  return result.data
+
+@[tactic suggestPremises]
+def suggestPremisesTactic : Tactic := fun stx => do
+  let features ← getFeatures
   let e := unlabeled features
   let p := rankingWithScores (← trainedForest) e
   let p : List Item := p.map (fun (name, score) => {name := name.toName, score})
-  saveWidget stx p.toArray
+  saveWidget stx p.toArray[:10]
   return ()
 
 elab "print_smt_features" : tactic => do
