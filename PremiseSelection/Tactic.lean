@@ -13,13 +13,40 @@ syntax (name := suggestPremises) "suggest_premises" : tactic
 
 @[tactic suggestPremises]
 def suggestPremisesTactic : Tactic := fun stx => do
-  let g ← getMainGoal
-  let m := MessageData.ofGoal g
-  let m ← addMessageContext m
-  let m ← m.toString
-  let e := unlabeled m.splitOn
+  --let g ← getMainGoal
+  --let m := MessageData.ofGoal g
+  --let m ← addMessageContext m
+  --let m ← m.toString
+  let t ← getMainTarget
+  let hyps_features ← withMainContext (do
+    let ctx ← getLCtx
+    let mut features : StatementFeatures := ∅
+    for h in ctx do
+      let p ← inferType h.type
+      if p.isProp then
+        let fs ← getStatementFeatures h.type
+        features := features ++ fs
+    return features
+  )
+  let target_features ← getStatementFeatures t
+  let mut result : Array String := #[]
+  for (n, _) in target_features.nameCounts do
+    result := result.push s!"T:{n}"
+  for (n, _) in hyps_features.nameCounts do
+    result := result.push s!"H:{n}"
+  for (n, _) in target_features.bigramCounts do
+    result := result.push s!"T:{n}"
+  for (n, _) in hyps_features.bigramCounts do
+    result := result.push s!"H:{n}"
+  for (n, _) in target_features.trigramCounts do
+    result := result.push s!"T:{n}"
+  for (n, _) in hyps_features.trigramCounts do
+    result := result.push s!"H:{n}"
+  let features := result.data
+  dbg_trace features
+  let e := unlabeled features
   let p := rankingWithScores (← trainedForest) e
-  let p : List Item := p.map (fun (name, score) => {name, score})
+  let p : List Item := p.map (fun (name, score) => {name := name.toName, score})
   saveWidget stx p.toArray
   return ()
 

@@ -17,21 +17,20 @@ open Direction
 def leaf (e : Example) :=
   Leaf (e.label, [e])
 
-def makeNewNode (optimLevel : Float) (examples : List Example) : IO Tree := do
+def makeNewNode (optimLevel : Float) (label : Label) (examples : List Example) : IO Tree := do
   let rule ← if optimLevel ≤ 0 then randomRule examples
     else optimizedRule optimLevel examples
   let (examplesL, examplesR) := split rule examples
   if examplesL.isEmpty || examplesR.isEmpty
-  then return Leaf ((← examples.chooseRandom).label, examples)
+  then return Leaf (label, examples)
   else return Node (rule,
     Leaf (unionOfLabels examplesL, examplesL),
     Leaf (unionOfLabels examplesR, examplesR))
 
-def initCond (initThreshold : Float) (examples : List Example) : Bool :=
+def initCond (initThreshold : Float) (label : Label) (examples : List Example) : Bool :=
   let labels := examples.map (fun x => x.label)
-  let unionSize := Float.ofNat (union labels).length
   let avgSize := average (labels.map (fun x => Float.ofNat x.length))
-  (unionSize / avgSize) > initThreshold
+  (Float.ofNat label.length / avgSize) > initThreshold
 
 def Tree.add (initThreshold : Float) (optimLevel : Float)
     (tree : Tree) (e : Example) : IO Tree := do
@@ -42,8 +41,9 @@ def Tree.add (initThreshold : Float) (optimLevel : Float)
       | Right => do return Node (fea, treeL, ← loop treeR)
     | Leaf (label, examples) =>
       let examples := e :: examples
-      if initCond initThreshold examples
-      then makeNewNode optimLevel examples
+      let label := union [label, e.label]
+      if initCond initThreshold label examples
+      then makeNewNode optimLevel label examples
       else return Leaf (label, examples)
   loop tree
 

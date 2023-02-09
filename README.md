@@ -24,6 +24,10 @@ be stored in `data/output.labels` and `data/output.labels`.
 
 Alternatively, see the documentation in `PremiseSelection/ExtractorRunner.lean`.
 
+# Getting started
+
+Make sure that elan is installed.
+
 # Building the widget
 
 In order to see the interactive list of premises you need to
