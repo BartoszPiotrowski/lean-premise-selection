@@ -103,17 +103,7 @@ private def extractPremisesFromConstantInfo
   (minDepth : UInt32 := 0) (maxDepth : UInt32 := 255)
   : ConstantInfo → MetaM (Option TheoremPremises)
   | ConstantInfo.thmInfo { name := n, type := ty, value := v, .. } => do
-    forallTelescope ty <| fun args thm => do
-      let thmFeats ← getStatementFeatures thm
-      let mut argsFeats := []
-      for arg in args do
-        let argType ← inferType arg
-        if (← inferType argType).isProp then
-          let argFeats ← getStatementFeatures argType
-          if ! argFeats.bigramCounts.isEmpty then
-            argsFeats := argsFeats ++ [argFeats]
-          if ! argFeats.trigramCounts.isEmpty then
-            argsFeats := argsFeats ++ [argFeats]
+      let (thmFeats, argsFeats) ← getThmAndArgsFeats ty
       -- Heuristic that can be used to ignore simple theorems and to avoid long
       -- executions for deep theorems.
       if minDepth <= v.approxDepth && v.approxDepth < maxDepth then

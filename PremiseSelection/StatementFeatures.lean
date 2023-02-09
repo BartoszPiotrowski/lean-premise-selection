@@ -142,4 +142,19 @@ def getStatementFeatures (e : Expr) : MetaM StatementFeatures := do
   let ((), features) ← WriterT.run <| forEachExpr visitFeature e
   return features
 
+open Lean.Meta
+
+def getThmAndArgsFeats (e : Expr) 
+  : MetaM (StatementFeatures × List StatementFeatures) := do
+  forallTelescope e <| fun args thm => do
+      let thmFeats ← getStatementFeatures thm
+      let mut argsFeats := []
+      for arg in args do
+        let argType ← inferType arg
+        if (← inferType argType).isProp then
+          let argFeats ← getStatementFeatures argType
+          if ! argFeats.nameCounts.isEmpty then
+            argsFeats := argsFeats ++ [argFeats]
+      return (thmFeats, argsFeats)
+
 end PremiseSelection
