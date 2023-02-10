@@ -31,10 +31,12 @@ structure WidgetProps where
 structure ItemData extends Item where
   expr? : Option CodeWithInfos := none
   error?: Option String := none
+  tactic?:  Option String := none
+  tacticResult?: Option CodeWithInfos := none
   deriving RpcEncodable, Inhabited
 
 structure GetItemArgs where
-  items : Array Item
+  item : Item
   pos : Lean.Lsp.Position
   deriving ToJson, FromJson, Inhabited
 
@@ -62,36 +64,87 @@ This is a temporary hack to try capitalising.
 def capitalizeFirstLetter : Name → Name :=
   mapRoot .capitalize
 
+def createConst (n : Name) : MetaM (Name × CodeWithInfos) := do
+  let e ← mkFun n <|> (mkFun <| capitalizeFirstLetter n)
+  let p ← ppExprTagged e
+  return (n,p)
+
+def ors [Alternative M] : (xs : List (M α))  → M α
+  | [] => failure
+  | (h :: t) => h <|> (ors t)
+
+
+def tryApply (n : Name): TacticM (TSyntax `tactic) := do
+  let ident := mkIdent n
+  let s ← `(tactic| apply $ident)
+  evalTactic s
+  return s
+
+def trySimp (n : Name) : TacticM (TSyntax `tactic) := do
+  let ident := mkIdent n
+  let s ← `(tactic| simp [$ident:term])
+  -- annoying UX: really hard to discover that the ':term' needed to be added on above line.
+  evalTactic s
+  return s
+
+def tryItem (item : Item) : TacticM ItemData := do
+    try
+      let n := item.name
+      let (n, ppc) ← ors [createConst n, createConst <| capitalizeFirstLetter n]
+      let s ← (tryApply n) <|> (trySimp n )
+      let ppt ← Lean.PrettyPrinter.ppTactic s
+      let result ← Tactic.getMainTarget
+      let result ← ppExprTagged result
+      return {item with name := n, expr? := ppc, tactic? := ppt.pretty, tacticResult? := result}
+    catch
+      e =>
+        let msg ← e.toMessageData.toString
+        return {item with error? := some msg}
+
+def withLctx (g : MVarId) (m : MetaM α): MetaM α := do
+    let some mvarDecl := (← getMCtx).findDecl? g
+      | throwError "unknown goal {g.name}"
+    let lctx := mvarDecl.lctx
+    let lctx := lctx.sanitizeNames.run' { options := (← getOptions) }
+    Meta.withLCtx lctx mvarDecl.localInstances m
+
+
+
+def runTacticM (snap : Snapshots.Snapshot) (goals : GoalsAtResult) (t : TacticM α) : RequestM α := do
+  let rc ← readThe RequestContext
+  let { ctxInfo := ci, tacticInfo := ti, useAfter := useAfter, .. } := goals
+  let mctx := if useAfter then ti.mctxAfter else ti.mctxBefore
+  let gs := if useAfter then ti.goalsAfter else ti.goalsBefore
+  let g1 := gs[0]!
+  let (e, _) ←
+    t
+    |>.run {elaborator := .anonymous}
+    |>.run { goals := gs }
+    |>.run'
+    |> withLctx g1
+    |>.run' {} {mctx := mctx}
+    |> snap.runCoreM rc.doc.meta
+    -- omg
+  return e
+
 
 open Lean Server RequestM in
 @[server_rpc_method]
-def getItems (args : GetItemArgs) : RequestM (RequestTask (Array ItemData)) := do
+def getItem (args : GetItemArgs) : RequestM (RequestTask (ItemData)) := do
   let doc ← readDoc
   let pos := doc.meta.text.lspPosToUtf8Pos args.pos
   withWaitFindSnapAtPos args.pos fun snap => do
     let g :: _ := snap.infoTree.goalsAt? doc.meta.text pos
       | throw <| RequestError.internalError "no goals"
-    let { ctxInfo := ci, tacticInfo := ti, useAfter := useAfter, .. } := g
-    let ci := if useAfter then { ci with mctx := ti.mctxAfter } else { ci with mctx := ti.mctxBefore }
-    let g :: _ := if useAfter then ti.goalsAfter else ti.goalsBefore
-      | throw <| RequestError.internalError "no goals"
-    ci.runMetaM {} <| do
-      let some mvarDecl := (← getMCtx).findDecl? g
-        | throwError "unknown goal {g.name}"
-      let lctx := mvarDecl.lctx
-      let lctx := lctx.sanitizeNames.run' { options := (← getOptions) }
-      Meta.withLCtx lctx mvarDecl.localInstances do
-        args.items.mapM (fun item => do
-          try
-            let e ← mkFun item.name <|> (mkFun <| capitalizeFirstLetter item.name)
-            let p ← ppExprTagged e
-            return {item with expr? := p}
-          catch
-            | e =>
-              let msg ← e.toMessageData.toString
-              return {item with error? := some msg}
+    runTacticM snap g (do
+      try
+          tryItem args.item
+      catch
+        | e =>
+          let msg ← e.toMessageData.toString
+          return {args.item with error? := some msg}
+    )
 
-        )
 
 
 def saveWidget (stx : Syntax) (xs : Array Item) : TacticM Unit := do

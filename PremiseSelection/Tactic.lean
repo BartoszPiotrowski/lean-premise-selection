@@ -11,8 +11,7 @@ def trainedForest := loadFromFile "data/forest.n+b.user.user-filter.mathlib4"
 
 syntax (name := suggestPremises) "suggest_premises" : tactic
 
-@[tactic suggestPremises]
-def suggestPremisesTactic : Tactic := fun stx => do
+def getFeatures := do
   let target ← getMainTarget
   let hyps ← withMainContext <| do
     let mut hyps := []
@@ -21,19 +20,22 @@ def suggestPremisesTactic : Tactic := fun stx => do
       let hyp ← inferType h.type
       hyps := hyps ++ [hyp]
     return hyps
-
+  
   let targetFeatures ← getStatementFeatures target
   let hypsFeatures ← getArgsFeatures hyps
 
   let features := Array.data <| targetFeatures.toTFeatures ++
     hypsFeatures.concatMap StatementFeatures.toHFeatures
-  dbg_trace features
-  
+    
+  return features
+
+@[tactic suggestPremises]
+def suggestPremisesTactic : Tactic := fun stx => do
+  let features ← getFeatures
   let e := unlabeled features
   let p := rankingWithScores (← trainedForest) e
   let p : List Item := p.map (fun (name, score) => {name := name.toName, score})
-  saveWidget stx p.toArray
-
+  saveWidget stx p.toArray[:10]
   return ()
 
 elab "print_smt_features" : tactic => do

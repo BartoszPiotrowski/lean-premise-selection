@@ -17,9 +17,11 @@ example : b = a * b ↔ a = 1 := by {
 
 variable [CommSemigroup G]
 
+#check mul_comm
 example : ∀ a b c : G, a * (b * c) = b * (a * c) := by
 {
   --print_smt_features
+  intros a b c
   suggest_premises
   sorry
 }
