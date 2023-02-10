@@ -16,6 +16,14 @@ The user can ask for advice from the trained model by using the provided tactic
 theorem at hand. The user may also extract their own training data and train
 their own machine learning model for premise selection.
 
+# Running the extractor
+
+To extract your own data from `data/all_imports`, build the project with 
+`lake build` and run `./util/extract.sh [+user] [+n] [+b] [+t]`. The output will 
+be stored in `data/output.labels` and `data/output.labels`.
+
+Alternatively, see the documentation in `PremiseSelection/ExtractorRunner.lean`.
+
 # Getting started
 
 Make sure that elan is installed.

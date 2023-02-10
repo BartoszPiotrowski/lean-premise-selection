@@ -76,6 +76,12 @@ instance : ForIn M (Multiset α) (α × Nat) :=
 def Multiset.toList (m : Multiset α) : List α :=
   m.foldl (fun l x _ => x :: l) []
 
+def Multiset.toHFeatures [ToString α] (m : Multiset α) : Array String :=
+  Array.mk <| m.toList.map (s!"H:{·}")
+
+def Multiset.toTFeatures [ToString α] (m : Multiset α) : Array String :=
+  Array.mk <| m.toList.map (s!"T:{·}")
+
 instance [ToJson α] : ToJson (Multiset α) where
   toJson m := Json.arr (Array.mk (m.toList.map toJson))
 
@@ -102,6 +108,16 @@ def StatementFeatures.mkBigram : Name → Name → StatementFeatures
 
 def StatementFeatures.mkTrigram : Name → Name → Name → StatementFeatures
   | n1, n2, n3 => {trigramCounts := Multiset.singleton ⟨n1, n2, n3⟩}
+
+def StatementFeatures.toHFeatures (f : StatementFeatures) : Array String := 
+  f.nameCounts.toHFeatures ++
+  f.bigramCounts.toHFeatures ++
+  f.trigramCounts.toHFeatures
+
+def StatementFeatures.toTFeatures (f : StatementFeatures) : Array String :=
+  f.nameCounts.toTFeatures ++
+  f.bigramCounts.toTFeatures ++
+  f.trigramCounts.toTFeatures
 
 def immediateName (e : Expr) : Option Name :=
   if let .const n _ := e then
@@ -141,5 +157,24 @@ def visitFeature (e : Expr) : WriterT StatementFeatures MetaM Unit  := do
 def getStatementFeatures (e : Expr) : MetaM StatementFeatures := do
   let ((), features) ← WriterT.run <| forEachExpr visitFeature e
   return features
+
+open Lean.Meta
+
+def getArgsFeatures (args : List Expr) : MetaM (Array StatementFeatures) := do 
+  let mut argsFeats := #[]
+  for arg in args do
+    let argType ← inferType arg
+    if (← inferType argType).isProp then
+      let argFeats ← getStatementFeatures argType
+      if ! argFeats.nameCounts.isEmpty then
+        argsFeats := argsFeats ++ #[argFeats]
+  return argsFeats
+
+def getThmAndArgsFeatures (e : Expr) 
+  : MetaM (StatementFeatures × Array StatementFeatures) := do
+  forallTelescope e <| fun args thm => do
+      let thmFeats ← getStatementFeatures thm
+      let argsFeats ← getArgsFeatures args.data
+      return (thmFeats, argsFeats)
 
 end PremiseSelection
