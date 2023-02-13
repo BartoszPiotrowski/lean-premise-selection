@@ -22,6 +22,10 @@ type ItemResult = {
   "noChange": { cmd: string }
 }
 
+function isSuccessful(result: ItemResult): boolean {
+  return "change" in result || "done" in result;
+}
+
 interface Item {
   name: string;
   score: number;
@@ -76,6 +80,7 @@ export default function (props: Props) {
   const [status, setStatus] = React.useState("init");
   const r = React.useRef(0);
   const rs = React.useContext(RpcContext);
+  const [showFailed, setshowFailed] = React.useState(true)
   async function e() {
     r.current += 1;
     const id = r.current;
@@ -87,8 +92,9 @@ export default function (props: Props) {
         return;
       }
       update({ kind: "update", index: i, item });
+      setStatus(`checked ${i} items`)
     }
-    setStatus(`done ${id}`);
+    setStatus(`finished checking ${items.length} items`);
   }
   React.useEffect(() => {
     e();
@@ -96,9 +102,10 @@ export default function (props: Props) {
   let msg: any | undefined = <>{status}</>;
   return (
     <div>
+      <label htmlFor=""><input type="checkbox" checked={showFailed} onChange={() => setshowFailed(x => !x)} /> Show failed suggestions. </label>
       <table>
         <tbody>
-          {items.map((x) => (
+          {items.filter(x => showFailed || (x.result && isSuccessful(x.result))).map((x) => (
             <ViewItem key={x.name} {...x} />
           ))}
         </tbody>

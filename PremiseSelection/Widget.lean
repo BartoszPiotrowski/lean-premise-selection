@@ -92,6 +92,13 @@ def trySimp (n : Name) : TacticM (TSyntax `tactic) := do
   evalTactic s
   return s
 
+def tryRw (n : Name) : TacticM (TSyntax `tactic) := do
+  let ident := mkIdent n
+  let s ← `(tactic| rw [$ident:term])
+  -- annoying UX: really hard to discover that the ':term' needed to be added on above line.
+  evalTactic s
+  return s
+
 
 def isDone : TacticM Bool := do
   let gs ← Tactic.getUnsolvedGoals
@@ -103,7 +110,7 @@ def innerTryItem (item : Item) : TacticM ItemData := do
     let (n, ppc) ← ors [createConst n, createConst <| capitalizeFirstLetter n]
     try
       let targ ← Tactic.getMainTarget
-      let s ← (tryApply n) <|> (trySimp n )
+      let s ← (tryApply n) <|> (tryRw n) <|> (trySimp n )
       let ppt ← Lean.PrettyPrinter.ppTactic s
       let cmd := ppt.pretty
       let result : ItemResult ← (do
