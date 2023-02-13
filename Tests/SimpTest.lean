@@ -4,23 +4,23 @@ import Lean.Elab.Tactic.Basic
 import PremiseSelection.Tactic
 
 import Mathlib.Algebra.Group.Basic
--- import Mathlib.Algebra.Group.Commutator
--- import Mathlib.Algebra.Group.Commute
--- import Mathlib.Algebra.Group.Conj
--- import Mathlib.Algebra.Group.Defs
--- import Mathlib.Algebra.Group.Ext
--- import Mathlib.Algebra.Group.InjSurj
--- import Mathlib.Algebra.Group.Opposite
--- import Mathlib.Algebra.Group.OrderSynonym
--- import Mathlib.Algebra.Group.Pi
--- import Mathlib.Algebra.Group.Prod
--- import Mathlib.Algebra.Group.Semiconj
--- import Mathlib.Algebra.Group.TypeTags
--- import Mathlib.Algebra.Group.ULift
--- import Mathlib.Algebra.Group.Units
--- import Mathlib.Algebra.Group.WithOne.Basic
--- import Mathlib.Algebra.Group.WithOne.Defs
--- import Mathlib.Algebra.Group.WithOne.Units
+import Mathlib.Algebra.Group.Commutator
+import Mathlib.Algebra.Group.Commute
+import Mathlib.Algebra.Group.Conj
+import Mathlib.Algebra.Group.Defs
+import Mathlib.Algebra.Group.Ext
+import Mathlib.Algebra.Group.InjSurj
+import Mathlib.Algebra.Group.Opposite
+import Mathlib.Algebra.Group.OrderSynonym
+import Mathlib.Algebra.Group.Pi
+import Mathlib.Algebra.Group.Prod
+import Mathlib.Algebra.Group.Semiconj
+import Mathlib.Algebra.Group.TypeTags
+import Mathlib.Algebra.Group.ULift
+import Mathlib.Algebra.Group.Units
+import Mathlib.Algebra.Group.WithOne.Basic
+import Mathlib.Algebra.Group.WithOne.Defs
+import Mathlib.Algebra.Group.WithOne.Units
 
 open Lean Elab Meta Tactic
 
@@ -49,6 +49,7 @@ unsafe def suggestSimpTactic : Tactic := fun _ => do
   for n in ns do
     let cinfo? := (← getEnv).find? n
     if let some (ConstantInfo.thmInfo _) := cinfo? then 
+      --dbg_trace s!"suggest_simp: {n}"
       let simpTheorems ← SimpTheoremsArray.addConst simpCtx.simpTheorems n
       simpCtx := { simpCtx with simpTheorems }
 
@@ -61,17 +62,18 @@ unsafe def suggestSimpTactic : Tactic := fun _ => do
   if let (none, usedSimps) ← simpGoal (← getMainGoal) simpCtx then
     setGoals []
 
-end PremiseSelection
-
-def runTactic (tactic : TacticM Unit) (goal : MVarId) (mctx : MetavarContext) 
+def runTactic' (tactic : TacticM Unit) (goal : MVarId) (mctx : MetavarContext) 
   : MetaM (List MVarId) := do
   let (_, tacticState) ←
     tactic
     |>.run { elaborator := .anonymous }
     |>.run { goals := [goal] }
     |>.run'
+    |> withLctx goal
     |>.run' {} { mctx := mctx }
   return tacticState.goals
+
+end PremiseSelection
 
 def simpTest : MetaM Unit := do
   let env ← getEnv
@@ -97,24 +99,34 @@ def simpTest : MetaM Unit := do
         totalCount := totalCount + 1
 
         let goal ← mkFreshMVarId
-        let mctx := (← getMCtx).addExprMVarDecl goal .anonymous (← getLCtx) (← getLocalInstances) ty
+        let mctx := ({} : MetavarContext).addExprMVarDecl goal .anonymous {} #[] ty
         
-        let justSimp := Tactic.evalTactic (← `(tactic| try { simp }))
-        let justSimpGoals ← runTactic justSimp goal mctx
+        -- let justSimp := Tactic.evalTactic (← `(tactic| try { simp }))
+        -- let justSimpGoals ← PremiseSelection.runTactic' justSimp goal mctx
         
-        if justSimpGoals.length == 0 then
-          continue
+        -- if justSimpGoals.length == 0 then
+        --   continue
 
         nontrivialCount := nontrivialCount + 1
 
         let suggestSimp := Tactic.evalTactic (← `(tactic| try { suggest_simp }))
-        let suggestSimpGoals ← runTactic suggestSimp goal mctx
+        let suggestSimpGoals ← PremiseSelection.runTactic' suggestSimp goal mctx
 
         if suggestSimpGoals.length == 0 then
           solvedCount := solvedCount + 1
+        
+        if totalCount == 10 then 
+          break
 
-        dbg_trace s!"{n} {justSimpGoals.length} {suggestSimpGoals.length}"
+        dbg_trace s!"{n} {suggestSimpGoals.length}"
         
     dbg_trace s!"{moduleName}: {solvedCount} / {nontrivialCount} / {totalCount}"
 
+-- theorem neg_add2.{u_1} {α : Type u_1} [SubtractionCommMonoid α] (a b : α) 
+--   : -(a + b) = -a + -b := 
+--   by 
+--     simp
+--     suggest_simp
+
 #eval simpTest
+
