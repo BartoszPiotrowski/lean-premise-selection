@@ -27,8 +27,8 @@ example : ∀ a b c : G, a * (b * c) = b * (a * c) := by
 }
 --left_comm Mul.mul mul_comm mul_assoc
 
-example (a b c : Nat) (h : a < 4) : a + 0 = a := by {
+example (a b c : Nat) (h : a < 4) : 0 + a = a := by {
   --print_smt_features
   suggest_premises
-  apply rfl
+  simp
 }

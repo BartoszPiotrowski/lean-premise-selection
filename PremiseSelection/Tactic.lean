@@ -28,11 +28,19 @@ def getGoalFeatures : TacticM (List String) := do
     hypsFeatures.concatMap StatementFeatures.toHFeatures
   return features
 
+def blacklist := [
+  "iff.trans",
+  "eq.trans",
+  "eq.symm",
+  "rfl"
+]
+
 @[tactic suggestPremises]
 def suggestPremisesTactic : Tactic := fun stx => do
   let features ← getGoalFeatures
   let e := unlabeled features
   let p := rankingWithScores (← trainedForest) e
+  let p := p.filter (fun (name, _) => blacklist.all (· ≠ name.toLower))
   let p : List Item := p.map (fun (name, score) => {name := name.toName, score})
   saveWidget stx p.toArray[:10]
   return ()
