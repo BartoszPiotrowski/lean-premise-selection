@@ -27,12 +27,17 @@ structure WidgetProps where
   items : Array Item
   deriving ToJson, FromJson, Inhabited
 
+inductive ItemResult where
+  | error (cmd? : Option String) (error : String)
+  | noChange (cmd : String)
+  | change (cmd : String) (target : CodeWithInfos)
+  | done (cmd : String)
+  deriving RpcEncodable, Inhabited
 
 structure ItemData extends Item where
   expr? : Option CodeWithInfos := none
   error?: Option String := none
-  tactic?:  Option String := none
-  tacticResult?: Option CodeWithInfos := none
+  result? : Option ItemResult := none
   deriving RpcEncodable, Inhabited
 
 structure GetItemArgs where
@@ -82,24 +87,54 @@ def tryApply (n : Name): TacticM (TSyntax `tactic) := do
 
 def trySimp (n : Name) : TacticM (TSyntax `tactic) := do
   let ident := mkIdent n
-  let s ← `(tactic| simp [$ident:term])
+  let s ← `(tactic| simp only [$ident:term])
   -- annoying UX: really hard to discover that the ':term' needed to be added on above line.
   evalTactic s
   return s
 
-def tryItem (item : Item) : TacticM ItemData := do
+def tryRw (n : Name) : TacticM (TSyntax `tactic) := do
+  let ident := mkIdent n
+  let s ← `(tactic| rw [$ident:term])
+  -- annoying UX: really hard to discover that the ':term' needed to be added on above line.
+  evalTactic s
+  return s
+
+
+def isDone : TacticM Bool := do
+  let gs ← Tactic.getUnsolvedGoals
+  return gs.isEmpty
+
+
+def innerTryItem (item : Item) : TacticM ItemData := do
+    let n := item.name
+    let (n, ppc) ← ors [createConst n, createConst <| capitalizeFirstLetter n]
     try
-      let n := item.name
-      let (n, ppc) ← ors [createConst n, createConst <| capitalizeFirstLetter n]
-      let s ← (tryApply n) <|> (trySimp n )
+      let targ ← Tactic.getMainTarget
+      let s ← (tryApply n) <|> (tryRw n) <|> (trySimp n )
       let ppt ← Lean.PrettyPrinter.ppTactic s
-      let result ← Tactic.getMainTarget
-      let result ← ppExprTagged result
-      return {item with name := n, expr? := ppc, tactic? := ppt.pretty, tacticResult? := result}
+      let cmd := ppt.pretty
+      let result : ItemResult ← (do
+        if ← isDone then
+          return ItemResult.done cmd
+        else
+          let result ← Tactic.getMainTarget
+          if result == targ then
+            return ItemResult.noChange cmd
+          let result ← ppExprTagged result
+          return ItemResult.change cmd result)
+      return {item with name := n, expr? := ppc, result? := some result}
     catch
       e =>
         let msg ← e.toMessageData.toString
-        return {item with error? := some msg}
+        return {item with name := n, expr? := ppc, result? := some <| ItemResult.error none msg}
+
+def tryItem (item : Item) : TacticM ItemData := do
+  try
+    innerTryItem item
+  catch
+    e =>
+      let msg ← e.toMessageData.toString
+      return {item with error? := some msg}
 
 def withLctx (g : MVarId) (m : MetaM α): MetaM α := do
     let some mvarDecl := (← getMCtx).findDecl? g
@@ -107,7 +142,6 @@ def withLctx (g : MVarId) (m : MetaM α): MetaM α := do
     let lctx := mvarDecl.lctx
     let lctx := lctx.sanitizeNames.run' { options := (← getOptions) }
     Meta.withLCtx lctx mvarDecl.localInstances m
-
 
 
 def runTacticM (snap : Snapshots.Snapshot) (goals : GoalsAtResult) (t : TacticM α) : RequestM α := do

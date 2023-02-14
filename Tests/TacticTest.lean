@@ -11,24 +11,23 @@ variable {M : Type u} [RightCancelMonoid M] {a b : M}
 example : b = a * b ↔ a = 1 := by {
   --print_smt_features
   suggest_premises
-  sorry
+  rw [eq_comm]
+  apply mul_left_eq_self
 }
---eq_comm.trans mul_left_eq_self
 
 variable [CommSemigroup G]
 
-#check mul_comm
 example : ∀ a b c : G, a * (b * c) = b * (a * c) := by
 {
   --print_smt_features
   intros a b c
   suggest_premises
-  sorry
+  apply left_comm
 }
 --left_comm Mul.mul mul_comm mul_assoc
 
-example (a b c : Nat) (h : a < 4) : a + 0 = a := by {
+example (a b c : Nat) (h : a < 4) : 0 + a = a := by {
   --print_smt_features
   suggest_premises
-  apply rfl
+  apply zero_add
 }
