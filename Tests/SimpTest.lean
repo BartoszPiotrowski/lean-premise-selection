@@ -3,24 +3,24 @@ import Lean.Elab.Term
 import Lean.Elab.Tactic.Basic
 import PremiseSelection.Tactic
 
-import Mathlib.Algebra.Group.Basic
-import Mathlib.Algebra.Group.Commutator
-import Mathlib.Algebra.Group.Commute
-import Mathlib.Algebra.Group.Conj
-import Mathlib.Algebra.Group.Defs
-import Mathlib.Algebra.Group.Ext
-import Mathlib.Algebra.Group.InjSurj
-import Mathlib.Algebra.Group.Opposite
-import Mathlib.Algebra.Group.OrderSynonym
-import Mathlib.Algebra.Group.Pi
-import Mathlib.Algebra.Group.Prod
-import Mathlib.Algebra.Group.Semiconj
-import Mathlib.Algebra.Group.TypeTags
-import Mathlib.Algebra.Group.ULift
-import Mathlib.Algebra.Group.Units
-import Mathlib.Algebra.Group.WithOne.Basic
-import Mathlib.Algebra.Group.WithOne.Defs
-import Mathlib.Algebra.Group.WithOne.Units
+-- import Mathlib.Algebra.Group.Basic
+-- import Mathlib.Algebra.Group.Commutator
+-- import Mathlib.Algebra.Group.Commute
+-- import Mathlib.Algebra.Group.Conj
+-- import Mathlib.Algebra.Group.Defs
+-- import Mathlib.Algebra.Group.Ext
+-- import Mathlib.Algebra.Group.InjSurj
+-- import Mathlib.Algebra.Group.Opposite
+-- import Mathlib.Algebra.Group.OrderSynonym
+-- import Mathlib.Algebra.Group.Pi
+-- import Mathlib.Algebra.Group.Prod
+-- import Mathlib.Algebra.Group.Semiconj
+-- import Mathlib.Algebra.Group.TypeTags
+-- import Mathlib.Algebra.Group.ULift
+-- import Mathlib.Algebra.Group.Units
+-- import Mathlib.Algebra.Group.WithOne.Basic
+-- import Mathlib.Algebra.Group.WithOne.Defs
+-- import Mathlib.Algebra.Group.WithOne.Units
 
 open Lean Elab Meta Tactic
 
@@ -41,26 +41,19 @@ unsafe def suggestSimpTactic : Tactic := fun _ => do
   let features ← getGoalFeatures
   let e := unlabeled features
   let ps := Array.mk (rankingWithScores (← trainedForest) e)
-  let fps := ps[:10].toArray
+  let fps := ps[:5].toArray
   let ns : Array Name := fps.map (fun (name, _) => name.toName)
 
-  let mut simpCtx ← Lean.Meta.Simp.Context.mkDefault
+  let mut simpCtx : Simp.Context := {} -- ← Lean.Meta.Simp.Context.mkDefault
 
   for n in ns do
     let cinfo? := (← getEnv).find? n
     if let some (ConstantInfo.thmInfo _) := cinfo? then 
-      --dbg_trace s!"suggest_simp: {n}"
       let simpTheorems ← SimpTheoremsArray.addConst simpCtx.simpTheorems n
       simpCtx := { simpCtx with simpTheorems }
-
-  -- let mut lemmasStx : Syntax.TSepArray `Lean.Parser.Tactic.simpLemma "," := ⟨#[]⟩
-  -- for n in ns do
-  --   let stx ← `($(mkIdent n))
-  --   lemmasStx := lemmasStx.push stx
-  -- evalTactic (← `(tactic| simp [$lemmasStx,*]))
   
-  if let (none, usedSimps) ← simpGoal (← getMainGoal) simpCtx then
-    setGoals []
+  if let (none, _) ← simpGoal (← getMainGoal) simpCtx then
+    replaceMainGoal []
 
 def runTactic' (tactic : TacticM Unit) (goal : MVarId) (mctx : MetavarContext) 
   : MetaM (List MVarId) := do
@@ -101,11 +94,11 @@ def simpTest : MetaM Unit := do
         let goal ← mkFreshMVarId
         let mctx := ({} : MetavarContext).addExprMVarDecl goal .anonymous {} #[] ty
         
-        -- let justSimp := Tactic.evalTactic (← `(tactic| try { simp }))
-        -- let justSimpGoals ← PremiseSelection.runTactic' justSimp goal mctx
+        let justSimp := Tactic.evalTactic (← `(tactic| try { simp }))
+        let justSimpGoals ← PremiseSelection.runTactic' justSimp goal mctx
         
-        -- if justSimpGoals.length == 0 then
-        --   continue
+        if justSimpGoals.length == 0 then
+          continue
 
         nontrivialCount := nontrivialCount + 1
 
@@ -114,19 +107,13 @@ def simpTest : MetaM Unit := do
 
         if suggestSimpGoals.length == 0 then
           solvedCount := solvedCount + 1
-        
-        if totalCount == 10 then 
-          break
+          dbg_trace s!"Successful suggest_simp: {n}"
 
-        dbg_trace s!"{n} {suggestSimpGoals.length}"
-        
-    dbg_trace s!"{moduleName}: {solvedCount} / {nontrivialCount} / {totalCount}"
+        --dbg_trace s!"{n} (j : {justSimpGoals.length}) (s : {suggestSimpGoals.length})"
 
--- theorem neg_add2.{u_1} {α : Type u_1} [SubtractionCommMonoid α] (a b : α) 
---   : -(a + b) = -a + -b := 
---   by 
---     simp
---     suggest_simp
+    dbg_trace s!"{moduleName}"
+    dbg_trace s!"Total theorems         : {totalCount}"
+    dbg_trace s!"Not solved by simp     : {nontrivialCount}"
+    dbg_trace s!"Solved by suggest_simp : {solvedCount}"
 
 #eval simpTest
-
