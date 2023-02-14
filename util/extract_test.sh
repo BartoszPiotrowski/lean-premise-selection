@@ -1,10 +1,10 @@
-export LEAN_PATH=build/lib
-export LEAN_PATH=$LEAN_PATH:lake-packages/mathlib3port/build/lib
-export LEAN_PATH=$LEAN_PATH:lake-packages/mathlib/build/lib
-export LEAN_PATH=$LEAN_PATH:lake-packages/lean3port/build/lib
-export LEAN_PATH=$LEAN_PATH:lake-packages/std/build/lib
-export LEAN_PATH=$LEAN_PATH:lake-packages/Qq/build/lib
-export LEAN_PATH=$LEAN_PATH:lake-packages/aesop/build/lib
+export LEAN_PATH=./build/lib
+export LEAN_PATH=$LEAN_PATH:./lake-packages/mathlib3port/build/lib
+export LEAN_PATH=$LEAN_PATH:./lake-packages/mathlib/build/lib
+export LEAN_PATH=$LEAN_PATH:./lake-packages/lean3port/build/lib
+export LEAN_PATH=$LEAN_PATH:./lake-packages/std/build/lib
+export LEAN_PATH=$LEAN_PATH:./lake-packages/Qq/build/lib 
+export LEAN_PATH=$LEAN_PATH:./lake-packages/Aesop/build/lib 
 
 PARAMS='+n +b +t'
 MODULES=`mktemp`
