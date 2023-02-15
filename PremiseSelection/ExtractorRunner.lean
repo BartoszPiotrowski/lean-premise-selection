@@ -6,7 +6,7 @@ open Lean Lean.Meta PremiseSelection
 
   `lean --run PremiseSelection/ExtractorRunner.lean
     data/test.labels data/test.features data/modules 
-    [min-depth=x] [max-depth=y] [+user] [+mathlib] [+n] [+b] [+t]`
+    [min-depth=x] [max-depth=y] [+all] [+user] [+math] [+n] [+b] [+t]`
 
 The first argument is the path to the labels file, the second argument is the
 path to the features file, the third argument is the path to the modules file (a
@@ -48,14 +48,17 @@ unsafe def main (args : List String) : IO Unit := do
         if h : n < UInt32.size then
           if key == "min" then minDepth := ⟨n, h⟩ else maxDepth := ⟨n, h⟩
 
+  -- Add `+all` to the command to apply the no-aux filter.
+  let noAux := (args.drop 3).contains "+all"
+
   -- Add `+user` to the command to apply the user filter.
   let user := (args.drop 3).contains "+user"
   
-  -- Add `+mathlib` to the command to apply the mathlib filter.
-  let mathlib := (args.drop 3).contains "+mathlib"
+  -- Add `+math` to the command to apply the math filter.
+  let math := (args.drop 3).contains "+math"
     
-  if user && mathlib then
-    panic "Cannot use both user and mathlib filters."
+  if user && math then
+    panic "Cannot use both user and math filters."
 
   -- Flags for features:
   -- * `+n` = nameCounts.
@@ -69,7 +72,7 @@ unsafe def main (args : List String) : IO Unit := do
 
   let format := FeatureFormat.mk n b t
 
-  let options : UserOptions := ⟨minDepth, maxDepth, user, mathlib, format⟩
+  let options : UserOptions := ⟨minDepth, maxDepth, noAux, user, math, format⟩
 
   let mut moduleNames := #[]
   for moduleNameStr in ← IO.FS.lines selectedModules do

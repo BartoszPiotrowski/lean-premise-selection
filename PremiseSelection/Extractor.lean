@@ -39,8 +39,9 @@ user premises and feature format. -/
 structure UserOptions where
   minDepth : UInt32        := 0
   maxDepth : UInt32        := 255
+  noAux    : Bool          := false
   user     : Bool          := false
-  mathlib  : Bool          := false
+  math     : Bool          := false
   format   : FeatureFormat := default
 deriving Inhabited
 
@@ -151,7 +152,7 @@ and inserts the resulting data. -/
 private def extractPremisesFromModule
   (insert : TheoremPremises → IO Unit)
   (moduleName : Name) (moduleData : ModuleData)
-  (minDepth maxDepth : UInt32) (user mathlib : Bool := false)
+  (minDepth maxDepth : UInt32) (noAux user math : Bool := false)
   : MetaM Unit := do
   dbg_trace s!"Extracting premises from {moduleName}."
   let mut filter : Name → Multiset Name → MetaM (Multiset Name × Bool) :=
@@ -187,7 +188,7 @@ private def extractPremisesFromModule
           return (filterUserPremises premises source, true)
         else return (premises, false)
   -- Mathlib-only filter.
-  else if mathlib then
+  else if math then
     let allNamesPath := "data/all_names"
     filter := fun _ premises => do
       let mut filteredPremises : Multiset Name := ∅
@@ -197,7 +198,7 @@ private def extractPremisesFromModule
           let premiseNameLast := toString premiseComponents.head!
           let output ← IO.Process.output { 
             cmd := "grep", 
-            args := #[premiseNameLast, allNamesPath] }
+            args := #["-x", premiseNameLast, allNamesPath] }
           if output.exitCode == 0 && !output.stdout.isEmpty then
             filteredPremises := filteredPremises.insert premise count
       return (filteredPremises, true)
@@ -210,7 +211,9 @@ private def extractPremisesFromModule
     let data? ← extractPremisesFromConstantInfo minDepth maxDepth cinfo
     if let some data := data? then
       countTotal := countTotal + 1
-      let (filteredPremises, found) ← filter data.name data.premises
+      let mut (filteredPremises, found) ← filter data.name data.premises
+      if noAux || user || math then
+        filteredPremises := noAuxFilter filteredPremises 
       if !user && !filteredPremises.isEmpty then
         countFoundAndNotEmpty := countFoundAndNotEmpty + 1
         let filteredData := { data with premises := data.premises }
@@ -230,6 +233,14 @@ private def extractPremisesFromModule
     dbg_trace s!"Total : {countTotal}"
     dbg_trace s!"Not empty : {countFoundAndNotEmpty}"
   return ()
+  where 
+    noAuxFilter (premises : Multiset Name) : Multiset Name := Id.run <| do
+      let mut result : Multiset Name := ∅
+      for (p, c) in premises do  
+        if !(["._", "_private.", "_Private."].any (·.isSubstrOf p.toString)) then 
+          result := result.insert p c
+      result
+        
 
 /-- Call `extractPremisesFromModule` with an insertion mechanism that writes
 to the specified files for labels and features. -/
@@ -246,10 +257,11 @@ def extractPremisesFromModuleToFiles
 
   let minDepth := userOptions.minDepth
   let maxDepth := userOptions.maxDepth
+  let noAux := userOptions.noAux
   let user := userOptions.user
-  let mathlib := userOptions.mathlib
+  let math := userOptions.math
   extractPremisesFromModule 
-    insert moduleName moduleData minDepth maxDepth user mathlib
+    insert moduleName moduleData minDepth maxDepth noAux user math
 
 /-- Go through the whole module and find the defininions that appear in the
 corresponding source file. This was used to generate `all_names`. -/
