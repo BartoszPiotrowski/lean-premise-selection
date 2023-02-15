@@ -36,59 +36,78 @@ def SimpTheoremsArray.addConst
   else
     thmsArray.modifyM 0 fun thms => thms.addConst declName
 
-def suggestSimpTacticM : TacticM Unit := do
-  let features ← getGoalFeatures
-  let e := unlabeled features
-  let ps := Array.mk (rankingWithScores (← trainedForest) e)
-  let fps := ps[:5].toArray
-  let ns : Array Name := fps.map (fun (name, _) => name.toName)
+def simpTacticM : TacticM Nat := do 
+  let n ← Tactic.tryTactic? <| do
+    let mut simpCtx : Simp.Context ← Lean.Meta.Simp.Context.mkDefault
+    let (result, usedSimps) ← simpGoal (← getMainGoal) simpCtx 
+    if result == none then
+      replaceMainGoal []
+    
+    return usedSimps.size
 
-  -- OLD APPROACH USING SIMP CTX.
-  -- let mut simpCtx : Simp.Context := {} -- ← Lean.Meta.Simp.Context.mkDefault
+  return n.getD 0
+
+def suggestSimpTacticM : TacticM Nat := do
+  let n ← Tactic.tryTactic? <| do
+    let features ← getGoalFeatures
+    let e := unlabeled features
+    let ps := Array.mk (rankingWithScores (← trainedForest) e)
+    let fps := ps[:5].toArray
+    let ns : Array Name := fps.map (fun (name, _) => name.toName)
+
+    -- OLD APPROACH USING SIMP CTX.
+    let mut simpCtx : Simp.Context := {} -- ← Lean.Meta.Simp.Context.mkDefault
+
+    for n in ns do
+      let cinfo? := (← getEnv).find? n
+      if let some (ConstantInfo.thmInfo _) := cinfo? then 
+        let simpTheorems ← SimpTheoremsArray.addConst simpCtx.simpTheorems n
+        simpCtx := { simpCtx with simpTheorems }
+    
+    let (result, usedSimps) ← simpGoal (← getMainGoal) simpCtx 
+    if result == none then
+      replaceMainGoal []
+    
+    return usedSimps.size
+  
+  return n.getD 0
+  
+  -- NEW APPROACH USING SIMP TACTIC.
+  -- let mut is : Array Ident := #[]
 
   -- for n in ns do
   --   let cinfo? := (← getEnv).find? n
   --   if let some (ConstantInfo.thmInfo _) := cinfo? then 
-  --     let simpTheorems ← SimpTheoremsArray.addConst simpCtx.simpTheorems n
-  --     simpCtx := { simpCtx with simpTheorems }
-  
-  -- if let (none, _) ← simpGoal (← getMainGoal) simpCtx then
-  --   replaceMainGoal []
-  
-  -- NEW APPROACH USING SIMP TACTIC.
-  let mut is : Array Ident := #[]
+  --     is := is.push (mkIdent n)
 
-  for n in ns do
-    let cinfo? := (← getEnv).find? n
-    if let some (ConstantInfo.thmInfo _) := cinfo? then 
-      is := is.push (mkIdent n)
-
-  if is.size == 1 then 
-    evalTactic (← `(tactic| try { simp [$(is[0]!):term] }))
-  else if is.size == 2 then 
-    evalTactic (← `(tactic| try { simp [$(is[0]!):term, $(is[1]!):term] }))
-  else if is.size == 3 then 
-    evalTactic (← `(tactic| try { simp [$(is[0]!):term, $(is[1]!):term, $(is[2]!):term] }))
-  else if is.size == 4 then 
-    evalTactic (← `(tactic| try { simp [$(is[0]!):term, $(is[1]!):term, $(is[2]!):term, $(is[3]!):term] }))
-  else if is.size == 5 then 
-    evalTactic (← `(tactic| try { simp [$(is[0]!):term, $(is[1]!):term, $(is[2]!):term, $(is[3]!):term, $(is[4]!):term] }))
+  -- if is.size == 1 then 
+  --   evalTactic (← `(tactic| try { intros ; simp only [*, $(is[0]!):term] }))
+  -- else if is.size == 2 then 
+  --   evalTactic (← `(tactic| try { intros ; simp only [*, $(is[0]!):term, $(is[1]!):term] }))
+  -- else if is.size == 3 then 
+  --   evalTactic (← `(tactic| try { intros ; simp only [*, $(is[0]!):term, $(is[1]!):term, $(is[2]!):term] }))
+  -- else if is.size == 4 then 
+  --   evalTactic (← `(tactic| try { intros ; simp only [*, $(is[0]!):term, $(is[1]!):term, $(is[2]!):term, $(is[3]!):term] }))
+  -- else if is.size == 5 then 
+  --   evalTactic (← `(tactic| try { intros ; simp only [*, $(is[0]!):term, $(is[1]!):term, $(is[2]!):term, $(is[3]!):term, $(is[4]!):term] }))
 
 @[tactic suggestSimp]
-unsafe def suggestSimpTactic : Tactic := fun _ => suggestSimpTacticM
+unsafe def suggestSimpTactic : Tactic := fun _ => do let _ ← suggestSimpTacticM
   
-def runTactic' (tactic : TacticM Unit) (goal : MVarId) (mctx : MetavarContext) 
-  : MetaM (List MVarId) := do
-  let (_, tacticState) ←
+def runTactic' (tactic : TacticM α) (goal : MVarId) (mctx : MetavarContext) 
+  : MetaM (α × List MVarId) := do
+  let (e, tacticState) ←
     tactic
     |>.run { elaborator := .anonymous }
     |>.run { goals := [goal] }
     |>.run'
     |> withLctx goal
     |>.run' {} { mctx := mctx }
-  return tacticState.goals
+  return (e, tacticState.goals)
 
 end PremiseSelection
+
+#check Tactic.tryTactic
 
 def simpTest : MetaM Unit := do
   let env ← getEnv
@@ -109,6 +128,8 @@ def simpTest : MetaM Unit := do
     let mut total := 0
     let mut solvedBySimp := 0
     let mut solvedBySuggestSimp := 0
+    let mut totalUsedSimp := 0
+    let mut totalUsedSuggestSimp := 0
 
     dbg_trace s!"-- {moduleName} --"
 
@@ -119,15 +140,21 @@ def simpTest : MetaM Unit := do
         let goal ← mkFreshMVarId
         let mctx := ({} : MetavarContext).addExprMVarDecl goal .anonymous {} #[] ty
         
-        let justSimp := Tactic.evalTactic (← `(tactic| try { simp }))
-        let justSimpGoals ← PremiseSelection.runTactic' justSimp goal mctx
+        let justSimp := PremiseSelection.simpTacticM
+        let (usedSimp, justSimpGoals) ← 
+          PremiseSelection.runTactic' justSimp goal mctx
         
+        totalUsedSimp := totalUsedSimp + usedSimp
+
         if justSimpGoals.length == 0 then
           solvedBySimp := solvedBySimp + 1
           dbg_trace s!"Successful simp: {n}"
 
-        let suggestSimp := PremiseSelection.suggestSimpTacticM -- Tactic.evalTactic (← `(tactic| try { suggest_simp }))
-        let suggestSimpGoals ← PremiseSelection.runTactic' suggestSimp goal mctx
+        let suggestSimp := PremiseSelection.suggestSimpTacticM
+        let (usedSuggestSimp, suggestSimpGoals) ← 
+          PremiseSelection.runTactic' suggestSimp goal mctx
+
+        totalUsedSuggestSimp := totalUsedSuggestSimp + usedSuggestSimp
 
         if suggestSimpGoals.length == 0 then
           solvedBySuggestSimp := solvedBySuggestSimp + 1
@@ -136,7 +163,7 @@ def simpTest : MetaM Unit := do
     dbg_trace s!"Total theorems         : {total}"
     dbg_trace s!"Solved by simp         : {solvedBySimp}"
     dbg_trace s!"Solved by suggest_simp : {solvedBySuggestSimp}"
-
-set_option maxHeartbeats 200000
+    dbg_trace s!"Used by simp           : {totalUsedSimp}"
+    dbg_trace s!"Used by suggest_simp   : {totalUsedSuggestSimp}"
 
 #eval simpTest
