@@ -239,7 +239,7 @@ private def extractPremisesFromModule
       for (p, c) in premises do  
         if !(["._", "_private.", "_Private."].any (·.isSubstrOf p.toString)) then 
           result := result.insert p c
-      result
+      return result
         
 
 /-- Call `extractPremisesFromModule` with an insertion mechanism that writes
