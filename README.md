@@ -19,8 +19,8 @@ their own machine learning model for premise selection.
 # Running the extractor
 
 To extract your own data from `data/all_imports`, build the project with 
-`lake build` and run `./util/extract.sh [+user] [+n] [+b] [+t]`. The output will 
-be stored in `data/output.labels` and `data/output.labels`.
+`lake build` and run `./util/extract.sh [+all] [+user] [+math] [+n] [+b] [+t]`. 
+The output will be stored in `data/output.labels` and `data/output.labels`.
 
 Alternatively, see the documentation in `PremiseSelection/ExtractorRunner.lean`.
 
