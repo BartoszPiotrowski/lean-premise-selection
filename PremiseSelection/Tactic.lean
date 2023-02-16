@@ -42,9 +42,14 @@ def suggestPremisesTactic : Tactic := fun stx => do
   let features ← getGoalFeatures
   let e := unlabeled features
   let p := rankingWithScores (← trainedForest) e
-  let p := p.filter (fun (name, score) => score > scoreThreshold && blacklist.all (· ≠ name.toLower))
-  let p : List Item := p.map (fun (name, score) => {name := name.toName, score})
-  saveWidget stx p.toArray
+  let p :=
+    p.filter (fun (name, score) => score > scoreThreshold && blacklist.all (· ≠ name.toLower))
+  let p : List Item ← p.filterMapM (fun (name, score) => (do
+    let name ← PremiseSelection.resolveConst name.toName
+    return (some {name, score})
+  ) <|> (pure none))
+  let p := p.toArray
+  saveWidget stx p
   return ()
 
 elab "print_smt_features" : tactic => do
