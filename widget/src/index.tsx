@@ -100,7 +100,7 @@ export default function (props: Props) {
     const id = r.current;
     update({ kind: "reset", items: props.items });
     setStatus(`loading ${id}`);
-    for (let i = 0; i < items.length; i++) {
+    for (let i = 0; i < props.items.length; i++) {
       const item = await getItem(rs, { item: props.items[i], pos });
       if (r.current !== id) {
         return;
@@ -108,7 +108,7 @@ export default function (props: Props) {
       update({ kind: "update", index: i, item });
       setStatus(`checked ${i} items`);
     }
-    setStatus(`finished checking ${items.length} items`);
+    setStatus(`finished checking ${props.items.length} items`);
   }
   React.useEffect(() => {
     e();
