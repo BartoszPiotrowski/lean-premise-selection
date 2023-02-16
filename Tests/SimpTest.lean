@@ -1,6 +1,7 @@
 import Lean 
 import Lean.Elab.Term
 import Lean.Elab.Tactic.Basic
+import Lean.Elab.Tactic.Simp
 import PremiseSelection.Tactic
 
 import Mathlib.Algebra.Group.Basic
@@ -22,7 +23,7 @@ import Mathlib.Algebra.Group.Units
 -- import Mathlib.Algebra.Group.WithOne.Defs
 -- import Mathlib.Algebra.Group.WithOne.Units
 
-open Lean Elab Meta Tactic
+open Lean Elab Meta Tactic Lean.Elab.Tactic
 
 namespace PremiseSelection
 
@@ -56,14 +57,14 @@ def suggestSimpTacticM : TacticM Nat := do
     let ns : Array Name := fps.map (fun (name, _) => name.toName)
 
     -- OLD APPROACH USING SIMP CTX.
-    let mut simpCtx : Simp.Context := {} -- ← Lean.Meta.Simp.Context.mkDefault
-
+    let mut simpCtx : Simp.Context := ← Lean.Meta.Simp.Context.mkDefault
+    
     for n in ns do
       let cinfo? := (← getEnv).find? n
       if let some (ConstantInfo.thmInfo _) := cinfo? then 
         let simpTheorems ← SimpTheoremsArray.addConst simpCtx.simpTheorems n
         simpCtx := { simpCtx with simpTheorems }
-    
+
     let (result, usedSimps) ← simpGoal (← getMainGoal) simpCtx 
     if result == none then
       replaceMainGoal []
@@ -106,8 +107,6 @@ def runTactic' (tactic : TacticM α) (goal : MVarId) (mctx : MetavarContext)
   return (e, tacticState.goals)
 
 end PremiseSelection
-
-#check Tactic.tryTactic
 
 def simpTest : MetaM Unit := do
   let env ← getEnv
@@ -163,7 +162,5 @@ def simpTest : MetaM Unit := do
     dbg_trace s!"Total theorems         : {total}"
     dbg_trace s!"Solved by simp         : {solvedBySimp}"
     dbg_trace s!"Solved by suggest_simp : {solvedBySuggestSimp}"
-    dbg_trace s!"Used by simp           : {totalUsedSimp}"
-    dbg_trace s!"Used by suggest_simp   : {totalUsedSuggestSimp}"
 
 #eval simpTest
