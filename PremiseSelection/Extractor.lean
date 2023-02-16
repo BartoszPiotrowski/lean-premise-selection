@@ -197,7 +197,7 @@ private def extractPremisesFromModule
           cmd := "grep", 
           args := #["-x", premise.toString, allNamesPath] }
         if output.exitCode == 0 && !output.stdout.isEmpty then
-            filteredPremises := filteredPremises.insert premise count
+          filteredPremises := filteredPremises.insert premise count
       return (filteredPremises, true)
 
   -- Go through all theorems in the module, filter premises and write.
@@ -299,8 +299,6 @@ def extractPremisesFromImportsToFiles
       moduleName.getRoot == `Mathbin || moduleName.getRoot == `Mathlib
     if imports.contains moduleName && isMathImport then
       count := count + 1
-      -- extractUserDefinitionsFromModuleToFile 
-      --   moduleName moduleData "./data/all_names"
       extractPremisesFromModuleToFiles
         moduleName moduleData labelsPath featuresPath userOptions
       dbg_trace s!"count = {count}."
