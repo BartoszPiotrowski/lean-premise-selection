@@ -30,9 +30,11 @@ def getGoalFeatures : TacticM (List String) := do
 
 def blacklist := [
   "iff.trans",
+  "iff.mp", "iff.mpr",
   "eq.trans",
   "eq.symm",
-  "rfl"
+  "rfl",
+  "or.elim"
 ]
 
 def scoreThreshold := 1
