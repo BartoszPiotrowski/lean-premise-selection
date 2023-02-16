@@ -193,13 +193,10 @@ private def extractPremisesFromModule
     filter := fun _ premises => do
       let mut filteredPremises : Multiset Name := ∅
       for (premise, count) in premises do
-        let premiseComponents := premise.componentsRev 
-        if premiseComponents.length > 0 then 
-          let premiseNameLast := toString premiseComponents.head!
-          let output ← IO.Process.output { 
-            cmd := "grep", 
-            args := #["-x", premiseNameLast, allNamesPath] }
-          if output.exitCode == 0 && !output.stdout.isEmpty then
+        let output ← IO.Process.output { 
+          cmd := "grep", 
+          args := #["-x", premise.toString, allNamesPath] }
+        if output.exitCode == 0 && !output.stdout.isEmpty then
             filteredPremises := filteredPremises.insert premise count
       return (filteredPremises, true)
 
@@ -221,12 +218,12 @@ private def extractPremisesFromModule
         let filteredData := { data with premises := filteredPremises }
         insert filteredData
       if source then
-          if found then
-            countFound := countFound + 1
-          if found && !filteredPremises.isEmpty then
-            countFoundAndNotEmpty := countFoundAndNotEmpty + 1
-            let filteredData := { data with premises := filteredPremises }
-            insert filteredData
+        if found then
+          countFound := countFound + 1
+        if found && !filteredPremises.isEmpty then
+          countFoundAndNotEmpty := countFoundAndNotEmpty + 1
+          let filteredData := { data with premises := filteredPremises }
+          insert filteredData
   if source then
     dbg_trace s!"Total : {countTotal}"
     dbg_trace s!"Found in source : {countFound}"
