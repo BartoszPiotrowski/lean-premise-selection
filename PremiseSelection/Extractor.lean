@@ -40,7 +40,7 @@ structure UserOptions where
   minDepth : UInt32        := 0
   maxDepth : UInt32        := 255
   noAux    : Bool          := false
-  user     : Bool          := false
+  source   : Bool          := false
   math     : Bool          := false
   format   : FeatureFormat := default
 deriving Inhabited
@@ -152,13 +152,13 @@ and inserts the resulting data. -/
 private def extractPremisesFromModule
   (insert : TheoremPremises → IO Unit)
   (moduleName : Name) (moduleData : ModuleData)
-  (minDepth maxDepth : UInt32) (noAux user math : Bool := false)
+  (minDepth maxDepth : UInt32) (noAux source math : Bool := false)
   : MetaM Unit := do
   dbg_trace s!"Extracting premises from {moduleName}."
   let mut filter : Name → Multiset Name → MetaM (Multiset Name × Bool) :=
     fun _ ns => pure (ns, false)
-  -- User filter.
-  if user then
+  -- Source filter.
+  if source then
     if let some modulePath ← proofSourcePath moduleName then
       -- Avoid very large files. In particular mathbin files over 2MB.
       let mut fileSize := 0
@@ -176,8 +176,8 @@ private def extractPremisesFromModule
         dbg_trace s! "Aborted {moduleName}, size {fileSize}"
         return ()
 
-      -- If user premises and path found, then create a filter looking at proof
-      -- source. If no proof source is found, no filter is applied.
+      -- If source premises and path found, then create a filter looking at 
+      -- proof source. If no proof source is found, no filter is applied.
       let data ← IO.FS.readFile modulePath
       let proofsJson :=
         match Json.parse data with
@@ -187,7 +187,7 @@ private def extractPremisesFromModule
         if let some source ← proofSource thmName proofsJson then
           return (filterUserPremises premises source, true)
         else return (premises, false)
-  -- Mathlib-only filter.
+  -- Math-only filter.
   else if math then
     let allNamesPath := "data/all_names"
     filter := fun _ premises => do
@@ -214,20 +214,20 @@ private def extractPremisesFromModule
       let mut filteredPremises : Multiset Name := ∅
       let (filterResult, found) ← filter data.name data.premises
       filteredPremises := filterResult
-      if noAux || user || math then
+      if noAux || source || math then
         filteredPremises ← noAuxFilter filteredPremises
-      if !user && !filteredPremises.isEmpty then
+      if !source && !filteredPremises.isEmpty then
         countFoundAndNotEmpty := countFoundAndNotEmpty + 1
         let filteredData := { data with premises := filteredPremises }
         insert filteredData
-      if user then
+      if source then
           if found then
             countFound := countFound + 1
           if found && !filteredPremises.isEmpty then
             countFoundAndNotEmpty := countFoundAndNotEmpty + 1
             let filteredData := { data with premises := filteredPremises }
             insert filteredData
-  if user then
+  if source then
     dbg_trace s!"Total : {countTotal}"
     dbg_trace s!"Found in source : {countFound}"
     dbg_trace s!"Found and not empty : {countFoundAndNotEmpty}"
@@ -236,13 +236,13 @@ private def extractPremisesFromModule
     dbg_trace s!"Not empty : {countFoundAndNotEmpty}"
   return ()
   where 
+    blackList : List String := ["._", "_private.", "_Private."]
+
     noAuxFilter (premises : Multiset Name) : MetaM (Multiset Name) := do
       let mut result : Multiset Name := ∅
       for (p, c) in premises do  
-        if ["._", "_private.", "_Private."].any (·.isSubstrOf p.toString) then 
-          dbg_trace s!"noAux filtered {p}"
-          continue
-        result := result.insert p c
+        if !(blackList.any (·.isSubstrOf p.toString)) then 
+          result := result.insert p c
       return result
 
 /-- Call `extractPremisesFromModule` with an insertion mechanism that writes
@@ -261,10 +261,10 @@ def extractPremisesFromModuleToFiles
   let minDepth := userOptions.minDepth
   let maxDepth := userOptions.maxDepth
   let noAux := userOptions.noAux
-  let user := userOptions.user
+  let source := userOptions.source
   let math := userOptions.math
   extractPremisesFromModule 
-    insert moduleName moduleData minDepth maxDepth noAux user math
+    insert moduleName moduleData minDepth maxDepth noAux source math
 
 /-- Go through the whole module and find the defininions that appear in the
 corresponding source file. This was used to generate `all_names`. -/
