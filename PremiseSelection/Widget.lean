@@ -25,6 +25,8 @@ structure Item where
 
 structure WidgetProps where
   items : Array Item
+  stx : Lsp.Range
+  uri: Lsp.DocumentUri
   deriving ToJson, FromJson, Inhabited
 
 inductive ItemResult where
@@ -55,7 +57,6 @@ def mkFun (constName : Name) : MetaM (Expr) := do
   let f := mkConst constName us
   return f
 
-
 def mapRoot (f : Name → Name) : Name → Name
   | .anonymous             => .anonymous
   | n@(.str .anonymous _) => f n
@@ -69,8 +70,10 @@ This is a temporary hack to try capitalising.
 def capitalizeFirstLetter : Name → Name :=
   mapRoot .capitalize
 
-def createConst (n : Name) : MetaM (Name × CodeWithInfos) := do
-  let e ← mkFun n <|> (mkFun <| capitalizeFirstLetter n)
+
+
+def createPPConst (n : Name) : MetaM (Name × CodeWithInfos) := do
+  let e ← mkFun n
   let p ← ppExprTagged e
   return (n,p)
 
@@ -78,6 +81,12 @@ def ors [Alternative M] : (xs : List (M α))  → M α
   | [] => failure
   | (h :: t) => h <|> (ors t)
 
+def createConst (n : Name): TacticM Name := do
+  let _ ← mkFun n
+  return n
+
+def resolveConst (n : Name) : TacticM Name :=
+  [n, capitalizeFirstLetter n] |>.map createConst |> ors
 
 def tryApply (n : Name): TacticM (TSyntax `tactic) := do
   let ident := mkIdent n
@@ -92,6 +101,8 @@ def trySimp (n : Name) : TacticM (TSyntax `tactic) := do
   evalTactic s
   return s
 
+
+
 def tryRw (n : Name) : TacticM (TSyntax `tactic) := do
   let ident := mkIdent n
   let s ← `(tactic| rw [$ident:term])
@@ -104,10 +115,16 @@ def isDone : TacticM Bool := do
   let gs ← Tactic.getUnsolvedGoals
   return gs.isEmpty
 
+def trySimps (ns : Array Name) : TacticM (TSyntax `tactic) := do
+  let idents := ns.map mkIdent
+  let s ← `(tactic| simp only  [ $[$idents:term],* ])
+  evalTactic s
+  guard (← isDone)
+  return s
 
 def innerTryItem (item : Item) : TacticM ItemData := do
     let n := item.name
-    let (n, ppc) ← ors [createConst n, createConst <| capitalizeFirstLetter n]
+    let (n, ppc) ← createPPConst n
     try
       let targ ← Tactic.getMainTarget
       let s ← (tryApply n) <|> (tryRw n) <|> (trySimp n )
@@ -179,10 +196,18 @@ def getItem (args : GetItemArgs) : RequestM (RequestTask (ItemData)) := do
           return {args.item with error? := some msg}
     )
 
+def syntaxToLspRange [MonadFileMap M] [Monad M] (stx : Syntax): M Lsp.Range := do
+  let fm ← getFileMap
+  let pos    := stx.getPos?.getD 0 |> fm.utf8PosToLspPos
+  let endPos := (fm.utf8PosToLspPos <$> stx.getTailPos?) |>.getD pos
+  return Lsp.Range.mk pos endPos
 
 
 def saveWidget (stx : Syntax) (xs : Array Item) : TacticM Unit := do
-  let ps : WidgetProps := {items := xs}
+  let fn ← getFileName
+  let uri := System.Uri.pathToUri fn
+  let r : Lsp.Range ← syntaxToLspRange stx
+  let ps : WidgetProps := {items := xs, stx := r, uri}
   saveWidgetInfo `PremiseSelection.premiseSelectionWidget (toJson ps) stx
   return ()
 

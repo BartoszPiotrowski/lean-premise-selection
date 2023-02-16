@@ -1,5 +1,11 @@
 import * as React from "react";
-import { Position } from "vscode-languageserver-protocol";
+import {
+  Position,
+  Range,
+  DocumentUri,
+  TextEdit,
+  WorkspaceEdit,
+} from "vscode-languageserver-protocol";
 import {
   InteractiveCode,
   useAsync,
@@ -7,20 +13,26 @@ import {
   CodeWithInfos,
   RpcSessionAtPos,
   DocumentPosition,
+  EditorContext,
+  EditorApi,
 } from "@leanprover/infoview";
 
-type ItemResult = {
-  "error": {
-    cmd?: string;
-    error: string;
+type ItemResult =
+  | {
+    error: {
+      cmd?: string;
+      error: string;
+    };
   }
-} | {
-  "done": { cmd: string }
-} | {
-  "change": { cmd: string, target: CodeWithInfos }
-} | {
-  "noChange": { cmd: string }
-}
+  | {
+    done: { cmd: string };
+  }
+  | {
+    change: { cmd: string; target: CodeWithInfos };
+  }
+  | {
+    noChange: { cmd: string };
+  };
 
 function isSuccessful(result: ItemResult): boolean {
   return "change" in result || "done" in result;
@@ -37,6 +49,8 @@ interface Item {
 interface Props {
   items: Item[];
   pos: DocumentPosition;
+  uri: DocumentUri;
+  stx: Range;
 }
 
 interface GetItemArgs {
@@ -72,7 +86,7 @@ function reducer(state: Item[], action: Update | Reset) {
 }
 
 export default function (props: Props) {
-  const pos = props.pos;
+  const { pos, uri, stx } = props;
   if (props.items.length === 0) {
     return <div>No premises found!</div>;
   }
@@ -80,21 +94,21 @@ export default function (props: Props) {
   const [status, setStatus] = React.useState("init");
   const r = React.useRef(0);
   const rs = React.useContext(RpcContext);
-  const [showFailed, setshowFailed] = React.useState(true)
+  const [showFailed, setshowFailed] = React.useState(true);
   async function e() {
     r.current += 1;
     const id = r.current;
     update({ kind: "reset", items: props.items });
     setStatus(`loading ${id}`);
-    for (let i = 0; i < items.length; i++) {
+    for (let i = 0; i < props.items.length; i++) {
       const item = await getItem(rs, { item: props.items[i], pos });
       if (r.current !== id) {
         return;
       }
       update({ kind: "update", index: i, item });
-      setStatus(`checked ${i} items`)
+      setStatus(`checked ${i} items`);
     }
-    setStatus(`finished checking ${items.length} items`);
+    setStatus(`finished checking ${props.items.length} items`);
   }
   React.useEffect(() => {
     e();
@@ -102,12 +116,21 @@ export default function (props: Props) {
   let msg: any | undefined = <>{status}</>;
   return (
     <div>
-      <label htmlFor=""><input type="checkbox" checked={showFailed} onChange={() => setshowFailed(x => !x)} /> Show failed suggestions. </label>
+      <label htmlFor="">
+        <input
+          type="checkbox"
+          checked={showFailed}
+          onChange={() => setshowFailed((x) => !x)}
+        />{" "}
+        Show failed suggestions.{" "}
+      </label>
       <table>
         <tbody>
-          {items.filter(x => showFailed || (x.result && isSuccessful(x.result))).map((x) => (
-            <ViewItem key={x.name} {...x} />
-          ))}
+          {items
+            .filter((x) => showFailed || (x.result && isSuccessful(x.result)))
+            .map((x) => (
+              <ViewItem key={x.name} item={x} stx={stx} uri={uri} />
+            ))}
         </tbody>
       </table>
       {msg && <span>{msg}</span>}
@@ -115,46 +138,91 @@ export default function (props: Props) {
   );
 }
 
-function ViewResult(props: ItemResult) {
-  if ("error" in props) {
-    return <span>❌ {props.error.error}</span>;
-  } else if ("done" in props) {
-    const { cmd } = props.done;
-    return <span>🎉 <code>{cmd}</code></span>;
-  } else if ("change" in props) {
-    const { cmd, target } = props.change;
+async function applyEdit(
+  stx: Range,
+  edit: string,
+  uri: DocumentUri,
+  e: EditorApi
+) {
+  const te: TextEdit = {
+    range: stx,
+    newText: edit,
+  };
+  const changes: any = {};
+  changes[uri] = [te];
+  const we: WorkspaceEdit = { changes };
+  // @ts-ignore
+  await e.applyEdit(we);
+  console.log(`Applied ${edit}.`);
+}
+
+function ApplyLink(props: {
+  stx: Range;
+  cmd: string;
+  uri: DocumentUri;
+  emoji: string;
+}) {
+  const { stx, uri, cmd, emoji } = props;
+  const ec = React.useContext(EditorContext);
+  return (
+    <a
+      href="#"
+      className="link grow pointer"
+      title="apply!"
+      onClick={() => applyEdit(stx, cmd, uri, ec.api)}
+    >
+      {emoji} <code>{cmd}</code>
+    </a>
+  );
+}
+
+function ViewResult(props: {
+  result: ItemResult;
+  stx: Range;
+  uri: DocumentUri;
+}) {
+  const { result, stx, uri } = props;
+
+  if ("error" in result) {
+    return <span>❌ {result.error.error}</span>;
+  } else if ("done" in result) {
+    const { cmd } = result.done;
+    return <ApplyLink emoji="🎉" stx={stx} uri={uri} cmd={cmd} />;
+  } else if ("change" in result) {
+    const { cmd, target } = result.change;
     return (
-      <span>✅ <code>{cmd}</code> &nbsp;
+      <span>
+        <ApplyLink emoji="✅" stx={stx} uri={uri} cmd={cmd} />
+        &nbsp;
         <code style={{ color: "var(--vscode-textLink-activeForeground)" }}>
           ⊢ <InteractiveCode fmt={target} />
-        </code></span>
+        </code>
+      </span>
     );
-  } else if ("noChange" in props) {
-    return <span>❌</span>
+  } else if ("noChange" in result) {
+    return <span>❌</span>;
   } else {
-    return <span>Unknown result type. {JSON.stringify(props)}</span>;
+    return <span>Unknown result type. {JSON.stringify(result)}</span>;
   }
 }
 
-
-function ViewItem(props: Item) {
+function ViewItem(props: { item: Item, stx: Range, uri: DocumentUri }) {
+  const { item, stx, uri } = props
   let n;
-  if (props.expr) {
+  if (item.expr) {
     n = (
       <code style={{ color: "var(--vscode-textLink-activeForeground)" }}>
-        <InteractiveCode fmt={props.expr} />
+        <InteractiveCode fmt={item.expr} />
       </code>
     );
   } else {
-    n = <code style={{ overflowWrap: "anywhere" }}>{props.name}</code>;
+    n = <code style={{ overflowWrap: "anywhere" }}>{item.name}</code>;
   }
   return (
     <tr>
       <td>{n}</td>
-      <td>
-        {props.result && <ViewResult {...props.result} />}
-      </td>
-      <td>{props.error ?? ""}</td>
+      <td>{item.result && <ViewResult result={item.result} stx={stx} uri={uri} />}</td>
+      <td>{item.error ?? ""}</td>
     </tr>
   );
 }
