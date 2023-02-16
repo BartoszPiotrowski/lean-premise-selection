@@ -211,12 +211,14 @@ private def extractPremisesFromModule
     let data? ← extractPremisesFromConstantInfo minDepth maxDepth cinfo
     if let some data := data? then
       countTotal := countTotal + 1
-      let mut (filteredPremises, found) ← filter data.name data.premises
+      let mut filteredPremises : Multiset Name := ∅
+      let (filterResult, found) ← filter data.name data.premises
+      filteredPremises := filterResult
       if noAux || user || math then
-        filteredPremises := noAuxFilter filteredPremises 
+        filteredPremises ← noAuxFilter filteredPremises
       if !user && !filteredPremises.isEmpty then
         countFoundAndNotEmpty := countFoundAndNotEmpty + 1
-        let filteredData := { data with premises := data.premises }
+        let filteredData := { data with premises := filteredPremises }
         insert filteredData
       if user then
           if found then
@@ -234,13 +236,14 @@ private def extractPremisesFromModule
     dbg_trace s!"Not empty : {countFoundAndNotEmpty}"
   return ()
   where 
-    noAuxFilter (premises : Multiset Name) : Multiset Name := Id.run <| do
+    noAuxFilter (premises : Multiset Name) : MetaM (Multiset Name) := do
       let mut result : Multiset Name := ∅
       for (p, c) in premises do  
-        if !(["._", "_private.", "_Private."].any (·.isSubstrOf p.toString)) then 
-          result := result.insert p c
+        if ["._", "_private.", "_Private."].any (·.isSubstrOf p.toString) then 
+          dbg_trace s!"noAux filtered {p}"
+          continue
+        result := result.insert p c
       return result
-        
 
 /-- Call `extractPremisesFromModule` with an insertion mechanism that writes
 to the specified files for labels and features. -/
