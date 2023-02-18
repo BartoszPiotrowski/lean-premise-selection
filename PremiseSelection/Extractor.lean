@@ -11,7 +11,7 @@ open Lean Lean.Elab Lean.Elab.Term Lean.Elab.Command Lean.Meta System
 structure TheoremPremises where
   name              : Name
   features          : StatementFeatures
-  argumentsFeatures : List StatementFeatures
+  argumentsFeatures : Array StatementFeatures
   premises          : Multiset Name
 
 instance : ToJson TheoremPremises where
@@ -26,7 +26,8 @@ instance : ToJson TheoremPremises where
 instance : ToString TheoremPremises where
   toString := Json.pretty ∘ toJson
 
-/-- Used to choose the feature format: nameCounts and/or bigramCounts -/
+/-- Used to choose the feature format: nameCounts and/or bigramCounts and/or 
+trigramCounts -/
 structure FeatureFormat where
   n : Bool := true
   b : Bool := true
@@ -39,6 +40,7 @@ structure UserOptions where
   minDepth : UInt32        := 0
   maxDepth : UInt32        := 255
   user     : Bool          := false
+  mathlib  : Bool          := false
   format   : FeatureFormat := default
 deriving Inhabited
 
@@ -47,37 +49,31 @@ be put together in a sequence tagged with `T` for theorem or `H` for
 hypotheses.  -/
 def getFeatures (tp : TheoremPremises) (format : FeatureFormat) : String :=
   Id.run <| do
+    let statementF := tp.features
+    let argsF := tp.argumentsFeatures
     let mut result : Array String := #[]
     if format.n then
-      for (n, _) in tp.features.nameCounts do
-        result := result.push s!"T:{n}"
-      for arg in tp.argumentsFeatures do
-        for (n, _) in arg.nameCounts do
-          result := result.push s!"H:{n}"
+      result := result ++ statementF.nameCounts.toTFeatures ++ 
+        argsF.concatMap (Multiset.toHFeatures ∘ StatementFeatures.nameCounts)
     if format.b then
-      for (b, _) in tp.features.bigramCounts do
-        result := result.push s!"T:{b}"
-      for arg in tp.argumentsFeatures do
-        for (b, _) in arg.bigramCounts do
-          result := result.push s!"H:{b}"
+      result := result ++ statementF.bigramCounts.toTFeatures ++ 
+        argsF.concatMap (Multiset.toHFeatures ∘ StatementFeatures.bigramCounts)
     if format.t then
-      for (t, _) in tp.features.trigramCounts do
-        result := result.push s!"T:{t}"
-      for arg in tp.argumentsFeatures do
-        for (t, _) in arg.trigramCounts do
-          result := result.push s!"H:{t}"
+      result := result ++ statementF.trigramCounts.toTFeatures ++ 
+        argsF.concatMap (Multiset.toHFeatures ∘ StatementFeatures.trigramCounts)
     return " ".intercalate result.data
 
 /-- Premises are simply concatenated. -/
 def getLabels (tp : TheoremPremises) : String :=
-  tp.name.toString ++ " : " ++ (" ".intercalate (tp.premises.toList.map toString))
+  let thmName := tp.name.toString
+  thmName ++ " : " ++ (" ".intercalate (tp.premises.toList.map toString))
 
 section CoreExtractor
 
 /-- Given a name `n`, if it qualifies as a premise, it returns `[n]`, otherwise
 it returns the empty list. -/
 private def getTheoremFromName (n : Name) : MetaM (Multiset Name) := do
-  -- NOTE: Get all consts whose type is of type Prop.
+  -- Get all consts whose type is of type Prop.
   if let some cinfo := (← getEnv).find? n then
     if (← inferType cinfo.type).isProp then
       pure (Multiset.singleton n)
@@ -101,17 +97,7 @@ private def extractPremisesFromConstantInfo
   (minDepth : UInt32 := 0) (maxDepth : UInt32 := 255)
   : ConstantInfo → MetaM (Option TheoremPremises)
   | ConstantInfo.thmInfo { name := n, type := ty, value := v, .. } => do
-    forallTelescope ty <| fun args thm => do
-      let thmFeats ← getStatementFeatures thm
-      let mut argsFeats := []
-      for arg in args do
-        let argType ← inferType arg
-        if (← inferType argType).isProp then
-          let argFeats ← getStatementFeatures argType
-          if ! argFeats.bigramCounts.isEmpty then
-            argsFeats := argsFeats ++ [argFeats]
-          if ! argFeats.trigramCounts.isEmpty then
-            argsFeats := argsFeats ++ [argFeats]
+      let (thmFeats, argsFeats) ← getThmAndArgsFeatures ty
       -- Heuristic that can be used to ignore simple theorems and to avoid long
       -- executions for deep theorems.
       if minDepth <= v.approxDepth && v.approxDepth < maxDepth then
@@ -165,14 +151,15 @@ and inserts the resulting data. -/
 private def extractPremisesFromModule
   (insert : TheoremPremises → IO Unit)
   (moduleName : Name) (moduleData : ModuleData)
-  (minDepth maxDepth : UInt32) (user : Bool := false)
+  (minDepth maxDepth : UInt32) (user mathlib : Bool := false)
   : MetaM Unit := do
   dbg_trace s!"Extracting premises from {moduleName}."
   let mut filter : Name → Multiset Name → MetaM (Multiset Name × Bool) :=
     fun _ ns => pure (ns, false)
+  -- User filter.
   if user then
     if let some modulePath ← proofSourcePath moduleName then
-      -- Avoid very large files.
+      -- Avoid very large files. In particular mathbin files over 2MB.
       let mut fileSize := 0
       let pathFromImport :=
         if moduleName.getRoot == `Mathbin then
@@ -184,7 +171,7 @@ private def extractPremisesFromModule
       if fileSize == 0 then
         dbg_trace s! "Aborted {moduleName}, ported file not found"
         return ()
-      if fileSize > 2 * 1024 * 1024 then -- 2MB
+      if fileSize > 2 * 1024 * 1024 then
         dbg_trace s! "Aborted {moduleName}, size {fileSize}"
         return ()
 
@@ -199,6 +186,21 @@ private def extractPremisesFromModule
         if let some source ← proofSource thmName proofsJson then
           return (filterUserPremises premises source, true)
         else return (premises, false)
+  -- Mathlib-only filter.
+  else if mathlib then
+    let allNamesPath := "data/all_names"
+    filter := fun _ premises => do
+      let mut filteredPremises : Multiset Name := ∅
+      for (premise, count) in premises do
+        let premiseComponents := premise.componentsRev 
+        if premiseComponents.length > 0 then 
+          let premiseNameLast := toString premiseComponents.head!
+          let output ← IO.Process.output { 
+            cmd := "grep", 
+            args := #[premiseNameLast, allNamesPath] }
+          if output.exitCode == 0 && !output.stdout.isEmpty then
+            filteredPremises := filteredPremises.insert premise count
+      return (filteredPremises, true)
 
   -- Go through all theorems in the module, filter premises and write.
   let mut countFoundAndNotEmpty := 0
@@ -214,7 +216,6 @@ private def extractPremisesFromModule
         let filteredData := { data with premises := data.premises }
         insert filteredData
       if user then
-          --dbg_trace s!"Name : {data.name} | Source : {countFound} | Filtered : {countFoundAndNotEmpty}."
           if found then
             countFound := countFound + 1
           if found && !filteredPremises.isEmpty then
@@ -222,7 +223,12 @@ private def extractPremisesFromModule
             let filteredData := { data with premises := filteredPremises }
             insert filteredData
   if user then
-    dbg_trace s!"Total : {countTotal} | Source : {countFound} | Filtered : {countFoundAndNotEmpty}."
+    dbg_trace s!"Total : {countTotal}"
+    dbg_trace s!"Found in source : {countFound}"
+    dbg_trace s!"Found and not empty : {countFoundAndNotEmpty}"
+  else 
+    dbg_trace s!"Total : {countTotal}"
+    dbg_trace s!"Not empty : {countFoundAndNotEmpty}"
   return ()
 
 /-- Call `extractPremisesFromModule` with an insertion mechanism that writes
@@ -241,7 +247,9 @@ def extractPremisesFromModuleToFiles
   let minDepth := userOptions.minDepth
   let maxDepth := userOptions.maxDepth
   let user := userOptions.user
-  extractPremisesFromModule insert moduleName moduleData minDepth maxDepth user
+  let mathlib := userOptions.mathlib
+  extractPremisesFromModule 
+    insert moduleName moduleData minDepth maxDepth user mathlib
 
 /-- Go through the whole module and find the defininions that appear in the
 corresponding source file. This was used to generate `all_names`. -/
@@ -279,7 +287,8 @@ def extractPremisesFromImportsToFiles
       moduleName.getRoot == `Mathbin || moduleName.getRoot == `Mathlib
     if imports.contains moduleName && isMathImport then
       count := count + 1
-      -- extractUserDefinitionsFromModuleToFile moduleName moduleData "./data/all_names"
+      -- extractUserDefinitionsFromModuleToFile 
+      --   moduleName moduleData "./data/all_names"
       extractPremisesFromModuleToFiles
         moduleName moduleData labelsPath featuresPath userOptions
       dbg_trace s!"count = {count}."

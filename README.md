@@ -1,5 +1,7 @@
 # Premise selection for Lean
 
+![Screenshot of premise selection widget.](./screenshot.png)
+
 The aim of this project (which is for now a work in progress) is to provide a
 tool for premise selection for Lean users.
 
@@ -15,6 +17,14 @@ The user can ask for advice from the trained model by using the provided tactic
 `suggest_premises`. It returns a ranking of premises likely useful for proving a
 theorem at hand. The user may also extract their own training data and train
 their own machine learning model for premise selection.
+
+# Running the extractor
+
+To extract your own data from `data/all_imports`, build the project with
+`lake build` and run `./util/extract.sh [+user] [+n] [+b] [+t]`. The output will
+be stored in `data/output.labels` and `data/output.labels`.
+
+Alternatively, see the documentation in `PremiseSelection/ExtractorRunner.lean`.
 
 # Getting started
 
@@ -32,3 +42,8 @@ npm run build -- --tsxName index
 ```
 
 Then head over to `TacticTest.lean` and hover on `suggest_premises`.
+
+
+# Development
+
+If you edit the `widget` directory, after running `npm run build -- --tsxName index`, you should also delete the `build` directory to force Lean to refresh and use the new version.

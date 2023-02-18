@@ -1,7 +1,10 @@
 /build
-/lean_packages/*
-lake-packages
-!/lean_packages/manifest.json
+/lake-packages
 /tmp
-/data
-widget/package-lock.json.trace
+/widget/package-lock.json.trace
+/data/*
+!/data/all_imports
+!/data/all_names
+!/data/bad_imports
+!/data/one_import
+!/data/forest.n+b.user.user-filter.mathlib4

@@ -25,16 +25,25 @@ structure Item where
 
 structure WidgetProps where
   items : Array Item
+  stx : Lsp.Range
+  uri: Lsp.DocumentUri
   deriving ToJson, FromJson, Inhabited
 
+inductive ItemResult where
+  | error (cmd? : Option String) (error : String)
+  | noChange (cmd : String)
+  | change (cmd : String) (target : CodeWithInfos)
+  | done (cmd : String)
+  deriving RpcEncodable, Inhabited
 
 structure ItemData extends Item where
   expr? : Option CodeWithInfos := none
   error?: Option String := none
+  result? : Option ItemResult := none
   deriving RpcEncodable, Inhabited
 
 structure GetItemArgs where
-  items : Array Item
+  item : Item
   pos : Lean.Lsp.Position
   deriving ToJson, FromJson, Inhabited
 
@@ -47,7 +56,6 @@ def mkFun (constName : Name) : MetaM (Expr) := do
   let us ← cinfo.levelParams.mapM fun _ => Lean.Meta.mkFreshLevelMVar
   let f := mkConst constName us
   return f
-
 
 def mapRoot (f : Name → Name) : Name → Name
   | .anonymous             => .anonymous
@@ -63,39 +71,143 @@ def capitalizeFirstLetter : Name → Name :=
   mapRoot .capitalize
 
 
+
+def createPPConst (n : Name) : MetaM (Name × CodeWithInfos) := do
+  let e ← mkFun n
+  let p ← ppExprTagged e
+  return (n,p)
+
+def ors [Alternative M] : (xs : List (M α))  → M α
+  | [] => failure
+  | (h :: t) => h <|> (ors t)
+
+def createConst (n : Name): TacticM Name := do
+  let _ ← mkFun n
+  return n
+
+def resolveConst (n : Name) : TacticM Name :=
+  [n, capitalizeFirstLetter n] |>.map createConst |> ors
+
+def tryApply (n : Name): TacticM (TSyntax `tactic) := do
+  let ident := mkIdent n
+  let s ← `(tactic| apply $ident)
+  evalTactic s
+  return s
+
+def trySimp (n : Name) : TacticM (TSyntax `tactic) := do
+  let ident := mkIdent n
+  let s ← `(tactic| simp only [$ident:term])
+  -- annoying UX: really hard to discover that the ':term' needed to be added on above line.
+  evalTactic s
+  return s
+
+
+
+def tryRw (n : Name) : TacticM (TSyntax `tactic) := do
+  let ident := mkIdent n
+  let s ← `(tactic| rw [$ident:term])
+  -- annoying UX: really hard to discover that the ':term' needed to be added on above line.
+  evalTactic s
+  return s
+
+
+def isDone : TacticM Bool := do
+  let gs ← Tactic.getUnsolvedGoals
+  return gs.isEmpty
+
+def trySimps (ns : Array Name) : TacticM (TSyntax `tactic) := do
+  let idents := ns.map mkIdent
+  let s ← `(tactic| simp only  [ $[$idents:term],* ])
+  evalTactic s
+  guard (← isDone)
+  return s
+
+def innerTryItem (item : Item) : TacticM ItemData := do
+    let n := item.name
+    let (n, ppc) ← createPPConst n
+    try
+      let targ ← Tactic.getMainTarget
+      let s ← (tryApply n) <|> (tryRw n) <|> (trySimp n )
+      let ppt ← Lean.PrettyPrinter.ppTactic s
+      let cmd := ppt.pretty
+      let result : ItemResult ← (do
+        if ← isDone then
+          return ItemResult.done cmd
+        else
+          let result ← Tactic.getMainTarget
+          if result == targ then
+            return ItemResult.noChange cmd
+          let result ← ppExprTagged result
+          return ItemResult.change cmd result)
+      return {item with name := n, expr? := ppc, result? := some result}
+    catch
+      e =>
+        let msg ← e.toMessageData.toString
+        return {item with name := n, expr? := ppc, result? := some <| ItemResult.error none msg}
+
+def tryItem (item : Item) : TacticM ItemData := do
+  try
+    innerTryItem item
+  catch
+    e =>
+      let msg ← e.toMessageData.toString
+      return {item with error? := some msg}
+
+def withLctx (g : MVarId) (m : MetaM α): MetaM α := do
+    let some mvarDecl := (← getMCtx).findDecl? g
+      | throwError "unknown goal {g.name}"
+    let lctx := mvarDecl.lctx
+    let lctx := lctx.sanitizeNames.run' { options := (← getOptions) }
+    Meta.withLCtx lctx mvarDecl.localInstances m
+
+
+def runTacticM (snap : Snapshots.Snapshot) (goals : GoalsAtResult) (t : TacticM α) : RequestM α := do
+  let rc ← readThe RequestContext
+  let { ctxInfo := ci, tacticInfo := ti, useAfter := useAfter, .. } := goals
+  let mctx := if useAfter then ti.mctxAfter else ti.mctxBefore
+  let gs := if useAfter then ti.goalsAfter else ti.goalsBefore
+  let g1 := gs[0]!
+  let (e, _) ←
+    t
+    |>.run {elaborator := .anonymous}
+    |>.run { goals := gs }
+    |>.run'
+    |> withLctx g1
+    |>.run' {} {mctx := mctx}
+    |> snap.runCoreM rc.doc.meta
+    -- omg
+  return e
+
+
 open Lean Server RequestM in
 @[server_rpc_method]
-def getItems (args : GetItemArgs) : RequestM (RequestTask (Array ItemData)) := do
+def getItem (args : GetItemArgs) : RequestM (RequestTask (ItemData)) := do
   let doc ← readDoc
   let pos := doc.meta.text.lspPosToUtf8Pos args.pos
   withWaitFindSnapAtPos args.pos fun snap => do
     let g :: _ := snap.infoTree.goalsAt? doc.meta.text pos
       | throw <| RequestError.internalError "no goals"
-    let { ctxInfo := ci, tacticInfo := ti, useAfter := useAfter, .. } := g
-    let ci := if useAfter then { ci with mctx := ti.mctxAfter } else { ci with mctx := ti.mctxBefore }
-    let g :: _ := if useAfter then ti.goalsAfter else ti.goalsBefore
-      | throw <| RequestError.internalError "no goals"
-    ci.runMetaM {} <| do
-      let some mvarDecl := (← getMCtx).findDecl? g
-        | throwError "unknown goal {g.name}"
-      let lctx := mvarDecl.lctx
-      let lctx := lctx.sanitizeNames.run' { options := (← getOptions) }
-      Meta.withLCtx lctx mvarDecl.localInstances do
-        args.items.mapM (fun item => do
-          try
-            let e ← mkFun item.name <|> (mkFun <| capitalizeFirstLetter item.name)
-            let p ← ppExprTagged e
-            return {item with expr? := p}
-          catch
-            | e =>
-              let msg ← e.toMessageData.toString
-              return {item with error? := some msg}
+    runTacticM snap g (do
+      try
+          tryItem args.item
+      catch
+        | e =>
+          let msg ← e.toMessageData.toString
+          return {args.item with error? := some msg}
+    )
 
-        )
+def syntaxToLspRange [MonadFileMap M] [Monad M] (stx : Syntax): M Lsp.Range := do
+  let fm ← getFileMap
+  let pos    := stx.getPos?.getD 0 |> fm.utf8PosToLspPos
+  let endPos := (fm.utf8PosToLspPos <$> stx.getTailPos?) |>.getD pos
+  return Lsp.Range.mk pos endPos
 
 
 def saveWidget (stx : Syntax) (xs : Array Item) : TacticM Unit := do
-  let ps : WidgetProps := {items := xs}
+  let fn ← getFileName
+  let uri := System.Uri.pathToUri fn
+  let r : Lsp.Range ← syntaxToLspRange stx
+  let ps : WidgetProps := {items := xs, stx := r, uri}
   saveWidgetInfo `PremiseSelection.premiseSelectionWidget (toJson ps) stx
   return ()
 
