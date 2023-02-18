@@ -20,22 +20,38 @@ def getGoalFeatures : TacticM (List String) := do
       let hyp ← inferType h.type
       hyps := hyps ++ [hyp]
     return hyps
-  
+
   let targetFeatures ← getStatementFeatures target
   let hypsFeatures ← getArgsFeatures hyps
 
   let features := Array.data <| targetFeatures.toTFeatures ++
     hypsFeatures.concatMap StatementFeatures.toHFeatures
-
   return features
+
+def blacklist := [
+  "iff.trans",
+  "iff.mp", "iff.mpr",
+  "eq.trans",
+  "eq.symm",
+  "rfl",
+  "or.elim"
+]
+
+def scoreThreshold := 1
 
 @[tactic suggestPremises]
 def suggestPremisesTactic : Tactic := fun stx => do
   let features ← getGoalFeatures
   let e := unlabeled features
   let p := rankingWithScores (← trainedForest) e
-  let p : List Item := p.map (fun (name, score) => {name := name.toName, score})
-  saveWidget stx p.toArray[:10]
+  let p :=
+    p.filter (fun (name, score) => score > scoreThreshold && blacklist.all (· ≠ name.toLower))
+  let p : List Item ← p.filterMapM (fun (name, score) => (do
+    let name ← PremiseSelection.resolveConst name.toName
+    return (some {name, score})
+  ) <|> (pure none))
+  let p := p.toArray
+  saveWidget stx p
   return ()
 
 elab "print_smt_features" : tactic => do
