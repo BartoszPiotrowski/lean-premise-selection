@@ -26,7 +26,7 @@ instance : ToJson TheoremPremises where
 instance : ToString TheoremPremises where
   toString := Json.pretty ∘ toJson
 
-/-- Used to choose the feature format: nameCounts and/or bigramCounts and/or 
+/-- Used to choose the feature format: nameCounts and/or bigramCounts and/or
 trigramCounts -/
 structure FeatureFormat where
   n : Bool := true
@@ -54,13 +54,13 @@ def getFeatures (tp : TheoremPremises) (format : FeatureFormat) : String :=
     let argsF := tp.argumentsFeatures
     let mut result : Array String := #[]
     if format.n then
-      result := result ++ statementF.nameCounts.toTFeatures ++ 
+      result := result ++ statementF.nameCounts.toTFeatures ++
         argsF.concatMap (Multiset.toHFeatures ∘ StatementFeatures.nameCounts)
     if format.b then
-      result := result ++ statementF.bigramCounts.toTFeatures ++ 
+      result := result ++ statementF.bigramCounts.toTFeatures ++
         argsF.concatMap (Multiset.toHFeatures ∘ StatementFeatures.bigramCounts)
     if format.t then
-      result := result ++ statementF.trigramCounts.toTFeatures ++ 
+      result := result ++ statementF.trigramCounts.toTFeatures ++
         argsF.concatMap (Multiset.toHFeatures ∘ StatementFeatures.trigramCounts)
     return " ".intercalate result.data
 
@@ -176,7 +176,7 @@ private def extractPremisesFromModule
         dbg_trace s! "Aborted {moduleName}, size {fileSize}"
         return ()
 
-      -- If source premises and path found, then create a filter looking at 
+      -- If source premises and path found, then create a filter looking at
       -- proof source. If no proof source is found, no filter is applied.
       let data ← IO.FS.readFile modulePath
       let proofsJson :=
@@ -189,12 +189,12 @@ private def extractPremisesFromModule
         else return (premises, false)
   -- Math-only filter.
   else if math then
-    let allNamesPath := "data/all_names"
+    let allNamesPath := "data/math_names"
     filter := fun _ premises => do
       let mut filteredPremises : Multiset Name := ∅
       for (premise, count) in premises do
-        let output ← IO.Process.output { 
-          cmd := "grep", 
+        let output ← IO.Process.output {
+          cmd := "grep",
           args := #["-x", premise.toString, allNamesPath] }
         if output.exitCode == 0 && !output.stdout.isEmpty then
           filteredPremises := filteredPremises.insert premise count
@@ -228,17 +228,17 @@ private def extractPremisesFromModule
     dbg_trace s!"Total : {countTotal}"
     dbg_trace s!"Found in source : {countFound}"
     dbg_trace s!"Found and not empty : {countFoundAndNotEmpty}"
-  else 
+  else
     dbg_trace s!"Total : {countTotal}"
     dbg_trace s!"Not empty : {countFoundAndNotEmpty}"
   return ()
-  where 
+  where
     blackList : List String := ["._", "_private.", "_Private."]
 
     noAuxFilter (premises : Multiset Name) : MetaM (Multiset Name) := do
       let mut result : Multiset Name := ∅
-      for (p, c) in premises do  
-        if !(blackList.any (·.isSubstrOf p.toString)) then 
+      for (p, c) in premises do
+        if !(blackList.any (·.isSubstrOf p.toString)) then
           result := result.insert p c
       return result
 
@@ -260,11 +260,11 @@ def extractPremisesFromModuleToFiles
   let noAux := userOptions.noAux
   let source := userOptions.source
   let math := userOptions.math
-  extractPremisesFromModule 
+  extractPremisesFromModule
     insert moduleName moduleData minDepth maxDepth noAux source math
 
 /-- Go through the whole module and find the defininions that appear in the
-corresponding source file. This was used to generate `all_names`. -/
+corresponding source file. This was used to generate `math_names`. -/
 def extractUserDefinitionsFromModuleToFile
   (moduleName : Name) (moduleData : ModuleData) (outputPath : FilePath)
   : MetaM Unit := do
