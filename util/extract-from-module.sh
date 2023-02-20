@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 MODULE=$1
 OUT_DIR=`realpath $2`
 PARAMS=${@:3}

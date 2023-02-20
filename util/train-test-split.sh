@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 DATA_DIR=$1
 TEST_MODULES=data/test_modules
 TEST=$DATA_DIR.test

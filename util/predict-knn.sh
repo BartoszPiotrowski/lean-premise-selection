@@ -1,4 +1,5 @@
-#!/bin/env bash
+#!/usr/bin/env bash
+
 set -o pipefail
 DIR=`pwd`
 DATA=$1

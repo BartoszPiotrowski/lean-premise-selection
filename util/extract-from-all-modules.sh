@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 PARAMS=$@
 PARAMS_NAME=`echo $PARAMS | sed 's/ /./g'`
 OUT_DIR=data/extracted.$PARAMS_NAME
