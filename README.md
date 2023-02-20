@@ -24,7 +24,7 @@ to ITP 2023 and is available [here](https://bartoszpiotrowski.pl/p/lean-premise-
 
 # Getting started
 
-Make sure that `elan` is installed. Now build the project by running
+Make sure that `elan` is installed. Build the project by running:
 ```
 lake build
 ```
@@ -41,7 +41,8 @@ npm i
 npm run build -- --tsxName index
 ```
 
-Then head over to `TacticTest.lean` and hover on `suggest_premises`.
+Then using VS Code, head over to `TacticTest.lean` and hover on
+`suggest_premises`.
 
 
 # Downloading pre-trained models
@@ -49,7 +50,7 @@ Then head over to `TacticTest.lean` and hover on `suggest_premises`.
 The random forest model invoked by the `suggest_premises` is stored at
 `data/forest.source.nb.small`. This is a smaller model included in the
 repository mainly for the purpose of demonstration. One can download
-'full-size' models by running:
+'full-size', more capable models by running:
 
 ```
 wget -P data https://bartoszpiotrowski.pl/p/forest.all.nb
@@ -76,14 +77,14 @@ To extract data from all the available modules listed in `data/all_modules`, run
 ./util/extract-from-all-modules.sh [+all] [+source] [+math] [+n] [+b] [+t]
 ```
 
-The meaning of the flags (which is compatible with the associated paper)
+The meaning of the flags (compatible with the associated paper)
 is the following:
 `+all` -- all but auxiliary, automatically generated premises are extracted
 `+source` -- premises explicitly used in the source files are extracted
 `+math` -- 'mathematical' premises listed in `math_names` are extracted
-`+n` -- 'name' features are used
-`+b` -- 'bigram' features are used
-`+t` -- 'trigram' features are used
+`+n` -- `name` features are used
+`+b` -- `bigram` features are used
+`+t` -- `trigram` features are used
 
 The extracted data will be stored in the directory `data/extracted.$PARAMS`
 where `$PARAMS` is a list of parameters (separated by `.`) passed to the
