@@ -47,9 +47,15 @@ To extract your own data from `data/all_imports` run
 
 The output will be stored in `data/output.labels` and `data/output.labels`.
 
+Note, that you need to select at least one option out of `+n`, `+b`, `+t`.
+
 Alternatively, see the documentation in `PremiseSelection/ExtractorRunner.lean`.
 
 # Training a model
+
+TODO
+
+# Downloading pretrained models
 
 TODO
 
