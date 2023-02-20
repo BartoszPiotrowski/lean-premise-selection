@@ -18,6 +18,9 @@ The user can ask for advice from the trained model by using the provided tactic
 theorem at hand. The user may also extract their own training data and train
 their own machine learning model for premise selection.
 
+The paper describing the design of the tool and its evaluation was submitted
+to ITP 2023 and is available [here][https://bartoszpiotrowski.pl/p/lean-premise-selection-paper.pdf].
+
 
 # Getting started
 
@@ -62,10 +65,9 @@ the definition of `trainedForest` in `PremiseSelection/Tactic.lean`.
 # Reproducing evaluation
 
 To reproduce the evaluation of the machine learning predictors, as described in
-the associated paper, first, data need to be extracted, and it needs to be split
-into training and testing parts. Then a machine learning model may be trained,
-and its predictions compared to the ground truth. Instructions of performing
-these steps are given below.
+the associated paper, first, data needs to be extracted, and then split into
+training and testing parts. Then, a machine learning model may be trained, and
+its predictions compared to the ground truth. Instructions below.
 
 ## Extracting data
 
