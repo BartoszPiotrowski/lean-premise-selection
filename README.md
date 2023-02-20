@@ -43,7 +43,21 @@ Then head over to `TacticTest.lean` and hover on `suggest_premises`.
 
 # Downloading pretrained models
 
-TODO
+The random forest model invoked by the `suggest_premises` is stored at
+`data/forest.source.nb.small`. This is a smaller model included in the
+repository mainly for the purpose of demonstration. One can download
+'full-size' models by running:
+
+```
+wget -P data https://bartoszpiotrowski.pl/p/forest.all.nb
+wget -P data https://bartoszpiotrowski.pl/p/forest.source.nb
+wget -P data https://bartoszpiotrowski.pl/p/forest.math.nb
+```
+
+These three models were trained using a combination of `name` and `bigram`
+features, on `all`, `source`, and `math` premises, respectively. In order to use
+them, change the path in the definition of `trainedForest` in
+`PremiseSelection/Tactic.lean`.
 
 # Reproducing evaluation of machine learning predictors
 
