@@ -21,7 +21,7 @@ their own machine learning model for premise selection.
 
 # Getting started
 
-Make sure that elan is installed. Now build the project by running
+Make sure that `elan` is installed. Now build the project by running
 ```
 lake build
 ```
@@ -41,7 +41,7 @@ npm run build -- --tsxName index
 Then head over to `TacticTest.lean` and hover on `suggest_premises`.
 
 
-# Downloading pretrained models
+# Downloading pre-trained models
 
 The random forest model invoked by the `suggest_premises` is stored at
 `data/forest.source.nb.small`. This is a smaller model included in the
@@ -55,20 +55,27 @@ wget -P data https://bartoszpiotrowski.pl/p/forest.math.nb
 ```
 
 These three models were trained using a combination of `name` and `bigram`
-features, on `all`, `source`, and `math` premises, respectively. In order to use
-them, change the path in the definition of `trainedForest` in
-`PremiseSelection/Tactic.lean`.
+features, on `all`, `source`, and `math` premises, respectively (see the
+associated paper for an explanation). In order to use them, change the path in
+the definition of `trainedForest` in `PremiseSelection/Tactic.lean`.
 
-# Reproducing evaluation of machine learning predictors
+# Reproducing evaluation
+
+To reproduce the evaluation of the machine learning predictors, as described in
+the associated paper, first, data need to be extracted, and it needs to be split
+into training and testing parts. Then a machine learning model may be trained,
+and its predictions compared to the ground truth. Instructions of performing
+these steps are given below.
 
 ## Extracting data
 
-To extract data from `data/all_modules` for training the predictors run
+To extract data from all the available modules listed in `data/all_modules`, run
 ```
 ./util/extract-from-all-modules.sh [+all] [+source] [+math] [+n] [+b] [+t]
 ```
 
-The meaning of the flags is compatible with the paper describing the tool:
+The meaning of the flags (which is compatible with the associated paper)
+is the following:
 `+all` -- all but auxiliary, automatically generated premises are extracted
 `+source` -- premises explicitly used in the source files are extracted
 `+math` -- 'mathematical' premises listed in `math_names` are extracted
@@ -76,15 +83,16 @@ The meaning of the flags is compatible with the paper describing the tool:
 `+b` -- 'bigram' features are used
 `+t` -- 'trigram' features are used
 
-The output will be stored in the directory `data/extracted.$PARAMS` where
-`$PARAMS` is a list of parameters (separated by `.`) passed to the extracting
-script.
+The extracted data will be stored in the directory `data/extracted.$PARAMS`
+where `$PARAMS` is a list of parameters (separated by `.`) passed to the
+extracting script (e.g., `extracted.+source.+n.+b`).
 
 Note, that you need to select at least one option out of `+n`, `+b`, `+t`.
+Otherwise an error will occur.
 
 ## Training and evaluating machine learning models
 
-To test the performance of the implemented machine learning models (random
+To test the performance of the implemented machine learning algorithms (random
 forest and k-nearest neighbours), one should split the extracted data into
 training and testing parts:
 
@@ -109,7 +117,7 @@ testing part of the data, run the following:
 ```
 
 Random forest model will be trained and saved, and its predictions will be saved
-and compared against the true labels in terms of the Cover measure defined in
+and compared against the true labels in terms of the Cover measure specified in
 `util/cover.py`.
 
 
@@ -121,7 +129,7 @@ of the data, run the following:
 ./util/predict-knn.sh data/extracted.$PARAMS
 ```
 The predictions will be saved and compared against the true labels in terms of
-the Cover measure defined in `util/cover.py`.
+the Cover measure specified in `util/cover.py`.
 
 
 # Development
