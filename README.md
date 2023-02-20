@@ -18,12 +18,14 @@ The user can ask for advice from the trained model by using the provided tactic
 theorem at hand. The user may also extract their own training data and train
 their own machine learning model for premise selection.
 
+
 # Getting started
 
 Make sure that elan is installed. Now build the project by running
 ```
 lake build
 ```
+
 
 # Building the widget
 
@@ -38,26 +40,75 @@ npm run build -- --tsxName index
 
 Then head over to `TacticTest.lean` and hover on `suggest_premises`.
 
-# Running the extractor
-
-To extract your own data from `data/all_imports` run
-```
-./util/extract.sh [+all] [+source] [+math] [+n] [+b] [+t]
-```
-
-The output will be stored in `data/output.labels` and `data/output.labels`.
-
-Note, that you need to select at least one option out of `+n`, `+b`, `+t`.
-
-Alternatively, see the documentation in `PremiseSelection/ExtractorRunner.lean`.
-
-# Training a model
-
-TODO
 
 # Downloading pretrained models
 
 TODO
+
+# Reproducing evaluation of machine learning predictors
+
+## Extracting data
+
+To extract data from `data/all_modules` for training the predictors run
+```
+./util/extract-from-all-modules.sh [+all] [+source] [+math] [+n] [+b] [+t]
+```
+
+The meaning of the flags is compatible with the paper describing the tool:
+`+all` -- all but auxiliary, automatically generated premises are extracted
+`+source` -- premises explicitly used in the source files are extracted
+`+math` -- 'mathematical' premises listed in `math_names` are extracted
+`+n` -- 'name' features are used
+`+b` -- 'bigram' features are used
+`+t` -- 'trigram' features are used
+
+The output will be stored in the directory `data/extracted.$PARAMS` where
+`$PARAMS` is a list of parameters (separated by `.`) passed to the extracting
+script.
+
+Note, that you need to select at least one option out of `+n`, `+b`, `+t`.
+
+## Training and evaluating machine learning models
+
+To test the performance of the implemented machine learning models (random
+forest and k-nearest neighbours), one should split the extracted data into
+training and testing parts:
+
+```
+./util/train-test-split.sh data/extracted.$PARAMS
+```
+
+This will produce 4 files:
+```
+data/extracted.$PARAMS.train.labels
+data/extracted.$PARAMS.train.features
+data/extracted.$PARAMS.test.labels
+data/extracted.$PARAMS.test.features
+```
+
+### Evaluating random forest
+
+To train a random forest model and evaluate its predictive performance on the
+testing part of the data, run the following:
+```
+./util/train-and-predict-rf.sh data/extracted.$PARAMS
+```
+
+Random forest model will be trained and saved, and its predictions will be saved
+and compared against the true labels in terms of the Cover measure defined in
+`util/cover.py`.
+
+
+### Evaluating k-nearest neighbours
+
+To evaluate k-nearest neighbours predictive performance on the testing part
+of the data, run the following:
+```
+./util/predict-knn.sh data/extracted.$PARAMS
+```
+The predictions will be saved and compared against the true labels in terms of
+the Cover measure defined in `util/cover.py`.
+
 
 # Development
 

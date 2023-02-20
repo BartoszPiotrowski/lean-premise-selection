@@ -1,3 +1,10 @@
+MODULE=$1
+OUT_DIR=`realpath $2`
+PARAMS=${@:3}
+LABELS=$OUT_DIR/$MODULE.labels
+FEATURES=$OUT_DIR/$MODULE.features
+LEAN_EXTRACTOR=PremiseSelection/ExtractorRunner.lean
+
 export LEAN_PATH=build/lib
 export LEAN_PATH=$LEAN_PATH:lake-packages/mathlib3port/build/lib
 export LEAN_PATH=$LEAN_PATH:lake-packages/mathlib/build/lib
@@ -6,13 +13,9 @@ export LEAN_PATH=$LEAN_PATH:lake-packages/std/build/lib
 export LEAN_PATH=$LEAN_PATH:lake-packages/Qq/build/lib
 export LEAN_PATH=$LEAN_PATH:lake-packages/aesop/build/lib
 
-PARAMS="max-depth=255 min-depth=0 $@"
-MODULES=`mktemp`
-echo Mathbin.Algebra.Group.Basic >  $MODULES
-echo Mathlib.Algebra.Group.Basic >> $MODULES
-
-lean --run PremiseSelection/ExtractorRunner.lean \
-    data/test.labels \
-    data/test.features \
-    $MODULES \
+lean --run --memory=4096 --timeout=100000000000 \
+    $LEAN_EXTRACTOR \
+    $LABELS \
+    $FEATURES \
+    <(echo $MODULE) \
     $PARAMS
