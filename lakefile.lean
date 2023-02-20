@@ -13,10 +13,6 @@ lean_lib PremiseSelection
 lean_lib Tests
 
 @[default_target]
-lean_exe TrainAndPredict where
-  root := `Scripts.TrainAndPredict
-
-@[default_target]
 lean_exe Train where
   root := `Scripts.Train
 
