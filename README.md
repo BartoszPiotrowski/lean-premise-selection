@@ -2,8 +2,8 @@
 
 ![Screenshot of premise selection widget.](./screenshot.png)
 
-The aim of this project (which is for now a work in progress) is to provide a
-tool for premise selection for Lean users.
+The aim of this project is to provide a tool for premise selection for Lean
+users.
 
 The premise selection mechanism is based on machine learning -- a custom
 version of the random forest algorithm.
@@ -18,27 +18,17 @@ The user can ask for advice from the trained model by using the provided tactic
 theorem at hand. The user may also extract their own training data and train
 their own machine learning model for premise selection.
 
-# Running the extractor
-
-To extract your own data from `data/all_imports`, build the project with 
-`lake build` and run 
-
-```
-./util/extract.sh [+all] [+source] [+math] [+n] [+b] [+t]
-```
-
-The output will be stored in `data/output.labels` and `data/output.labels`.
-
-Alternatively, see the documentation in `PremiseSelection/ExtractorRunner.lean`.
-
 # Getting started
 
-Make sure that elan is installed.
+Make sure that elan is installed. Now build the project by running
+```
+lake build
+```
 
 # Building the widget
 
-In order to see the interactive list of premises you need to
-run the following:
+In order to use `suggest_premises` tactic and see the interactive list of
+premises you need to run the following:
 
 ```
 cd widget
@@ -48,7 +38,23 @@ npm run build -- --tsxName index
 
 Then head over to `TacticTest.lean` and hover on `suggest_premises`.
 
+# Running the extractor
+
+To extract your own data from `data/all_imports` run
+```
+./util/extract.sh [+all] [+source] [+math] [+n] [+b] [+t]
+```
+
+The output will be stored in `data/output.labels` and `data/output.labels`.
+
+Alternatively, see the documentation in `PremiseSelection/ExtractorRunner.lean`.
+
+# Training a model
+
+TODO
 
 # Development
 
-If you edit the `widget` directory, after running `npm run build -- --tsxName index`, you should also delete the `build` directory to force Lean to refresh and use the new version.
+If you edit the `widget` directory, after running `npm run build -- --tsxName
+index`, you should also delete the `build` directory to force Lean to refresh
+and use the new version.
