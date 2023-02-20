@@ -19,7 +19,7 @@ theorem at hand. The user may also extract their own training data and train
 their own machine learning model for premise selection.
 
 The paper describing the design of the tool and its evaluation was submitted
-to ITP 2023 and is available [here][https://bartoszpiotrowski.pl/p/lean-premise-selection-paper.pdf].
+to ITP 2023 and is available [here](https://bartoszpiotrowski.pl/p/lean-premise-selection-paper.pdf).
 
 
 # Getting started
