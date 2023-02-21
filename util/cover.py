@@ -1,4 +1,4 @@
-#!/bin/env python3
+#!/usr/bin/env python3
 import argparse
 
 parser = argparse.ArgumentParser(
@@ -30,4 +30,3 @@ if args.save_covers:
     lines = '\n'.join([str(i) for i in covers]) + '\n'
     with open(path, 'w') as f:
         f.write(lines)
-
