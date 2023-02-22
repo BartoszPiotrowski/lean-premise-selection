@@ -17,7 +17,6 @@ if [ ! -d data/proof_sources ]; then
     cd ../..
 fi
 
-cat data/all_modules_debug | while read m; do
-#cat data/all_modules | while read m; do
+cat data/all_modules | while read m; do
     $SCRIPT_DIR/extract-from-module.sh $m $OUT_DIR $PARAMS
 done
