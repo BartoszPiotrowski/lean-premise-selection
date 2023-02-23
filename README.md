@@ -24,7 +24,7 @@ to ITP 2023 and is available [here](https://bartoszpiotrowski.pl/p/lean-premise-
 
 # Getting started
 
-Make sure that `elan` is installed. Build the project by running:
+Make sure that `elan` is installed an up to date. Build the project by running:
 ```
 lake build
 ```
