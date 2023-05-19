@@ -12,7 +12,7 @@ if [ ! -d data/proof_sources ]; then
     cd data/proof_sources
     git clone https://github.com/ramonfmir/mathport.git
     cd mathport
-    git checkout 5155c5d
+    git checkout dcb5472
     cd ..
     mv mathport/Outputs/src/mathbin/Mathbin .
     cp -r Mathbin Mathlib
