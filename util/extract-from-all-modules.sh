@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+#
+MATHBIN=lake-packages/mathlib3port/Mathbin
+MATHLIB=lake-packages/mathlib/Mathlib
 
 PARAMS=$@
 PARAMS_NAME=`echo $PARAMS | sed 's/ /./g'`
@@ -20,6 +23,14 @@ if [ ! -d data/proof_sources ]; then
     cd ../..
 fi
 
-cat data/all_modules | while read m; do
-    $SCRIPT_DIR/extract-from-module.sh $m $OUT_DIR $PARAMS
+find $MATHBIN -name '*.lean' ! -name "All.lean" | while read f; do
+    module=`echo $f | sed 's/.*Mathbin/Mathbin/g; s/.lean$//g; s/\//./g'`
+    echo "Extracting from $module"
+    $SCRIPT_DIR/extract-from-module.sh $module $OUT_DIR $PARAMS
+done
+
+find $MATHLIB -name '*.lean' ! -name "All.lean" | while read f; do
+    module=`echo $f | sed 's/.*Mathlib/Mathlib/g; s/.lean$//g; s/\//./g'`
+    echo "Extracting from $module"
+    $SCRIPT_DIR/extract-from-module.sh $module $OUT_DIR $PARAMS
 done
