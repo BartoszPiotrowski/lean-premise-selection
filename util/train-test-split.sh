@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 DATA_DIR=$1
-TEST_MODULES=data/test_modules
+TEST_MODULES=data/sinks
 TEST=$DATA_DIR.test
 TRAIN=$DATA_DIR.train
 rm $TEST.features $TEST.labels 2> /dev/null

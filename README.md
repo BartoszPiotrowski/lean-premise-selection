@@ -100,6 +100,7 @@ forest and k-nearest neighbours), one should split the extracted data into
 training and testing parts:
 
 ```
+./util/list-sinks.sh # extract list of modules not being deps of other modules
 ./util/train-test-split.sh data/extracted.$PARAMS
 ```
 
