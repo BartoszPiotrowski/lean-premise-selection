@@ -72,7 +72,7 @@ its predictions compared to the ground truth. Instructions below.
 
 ## Extracting data
 
-To extract data from all the available modules listed in `data/all_modules`, run
+To extract data from all the available modules run
 ```
 ./util/extract-from-all-modules.sh [+all] [+source] [+math] [+n] [+b] [+t]
 ```
