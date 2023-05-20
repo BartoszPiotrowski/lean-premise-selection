@@ -12,12 +12,12 @@ Ouput: the theorem statement as an expr
  -/
 open Std
 
-def Std.RBMap.modify' (k : κ) (fn : Option α → Option α) (r : RBMap κ α cmp) :=
+def Std.RBMap.modify' [Ord κ] (k : κ) (fn : Option α → Option α) (r : RBMap κ α compare) :=
   match fn <| r.find? k with
   | none => r.erase k
   | some v => r.insert k v
 
-def Std.RBMap.mergeBy (fn : κ → α → α → α) (r1 r2 : RBMap κ α cmp) :  RBMap κ α cmp :=
+def Std.RBMap.mergeBy [Ord κ] (fn : κ → α → α → α) (r1 r2 : RBMap κ α compare) :  RBMap κ α compare :=
   r2.foldl (fun r1 k v2 => r1.modify' k (fun | none => some v2 | some v1 => some (fn k v1 v2))) r1
 
 namespace PremiseSelection

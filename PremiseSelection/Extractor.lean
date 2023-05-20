@@ -248,8 +248,8 @@ def extractPremisesFromModuleToFiles
   (moduleName : Name) (moduleData : ModuleData)
   (labelsPath featuresPath : FilePath) (userOptions : UserOptions := default)
   : MetaM Unit := do
-  let labelsHandle ← Handle.mk labelsPath Mode.append false
-  let featuresHandle ← Handle.mk featuresPath Mode.append false
+  let labelsHandle ← Handle.mk labelsPath Mode.append
+  let featuresHandle ← Handle.mk featuresPath Mode.append
 
   let insert : TheoremPremises → IO Unit := fun data => do
     labelsHandle.putStrLn (getLabels data)
@@ -268,7 +268,7 @@ corresponding source file. This was used to generate `math_names`. -/
 def extractUserDefinitionsFromModuleToFile
   (moduleName : Name) (moduleData : ModuleData) (outputPath : FilePath)
   : MetaM Unit := do
-  let labelsHandle ← Handle.mk outputPath Mode.append false
+  let labelsHandle ← Handle.mk outputPath Mode.append
   for cinfo in moduleData.constants do
     if let some modulePath ← pathFromMathbinImport moduleName then
       let args := #[cinfo.name.toString, modulePath.toString]
