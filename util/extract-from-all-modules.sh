@@ -15,9 +15,6 @@ if [ ! -d data/proof_sources ]; then
     mkdir data/proof_sources
     cd data/proof_sources
     git clone https://github.com/ramonfmir/mathport.git
-    cd mathport
-    git checkout 40d0195
-    cd ..
     mv mathport/Outputs/src/mathbin/Mathbin .
     cp -r Mathbin Mathlib
     rm -rf mathport
