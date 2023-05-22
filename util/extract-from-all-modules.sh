@@ -24,20 +24,19 @@ if [ ! -d data/proof_sources ]; then
 fi
 
 extract() {
-    SCRIPT_DIR=$1
-    OUT_DIR=$2
-    PARAMS=$3
-    module=$4
+    module=$1
+    SCRIPT_DIR=$2
+    OUT_DIR=$3
+    PARAMS=${@:4}
     module=`echo $module | sed 's/.lean$//g; s/\//./g'`
     module=`echo $module | sed 's/.*Mathbin/Mathbin/g'`
     module=`echo $module | sed 's/.*Mathlib/Mathlib/g'`
     echo "Extracting from $module"
+    echo "$SCRIPT_DIR/extract-from-module.sh $module $OUT_DIR $PARAMS"
     $SCRIPT_DIR/extract-from-module.sh $module $OUT_DIR $PARAMS
 }
 export -f extract
 
 find $MATHBIN -name '*.lean' ! -name "All.lean" | \
-    parallel "extract $SCRIPT_DIR $OUT_DIR $PARAMS {}"
-find $MATHLIB -name '*.lean' ! -name "All.lean" | \
-    parallel "extract $SCRIPT_DIR $OUT_DIR $PARAMS {}"
+    parallel "extract {} $SCRIPT_DIR $OUT_DIR $PARAMS"
 
