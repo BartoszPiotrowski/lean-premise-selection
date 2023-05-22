@@ -38,37 +38,7 @@ def blacklist := [
 
 def scoreThreshold := 1
 
-@[tactic suggestPremises]
-def suggestPremisesTactic : Tactic := fun stx => do
-  let features ← getGoalFeatures
-  let e := unlabeled features
-  let p := rankingWithScores (← trainedForest) e
-  let p :=
-    p.filter (fun (name, score) => score > scoreThreshold && blacklist.all (· ≠ name.toLower))
-  let p : List Item ← p.filterMapM (fun (name, score) => (do
-    let name ← PremiseSelection.resolveConst name.toName
-    return (some {name, score})
-  ) <|> (pure none))
-  let p := p.toArray
-  saveWidget stx p
-  return ()
 
-elab "print_smt_features" : tactic => do
-  let t ← getMainTarget
-  let hyps_features ← withMainContext (do
-    let ctx ← getLCtx
-    let mut features : StatementFeatures := ∅
-    for h in ctx do
-      let p ← inferType h.type
-      if p.isProp then
-        let fs ← getStatementFeatures h.type
-        features := features ++ fs
-    return features
-  )
-  let target_features ← getStatementFeatures t
-  let features := hyps_features ++ target_features
-  for (⟨n1, n2⟩, count) in features.bigramCounts do
-    dbg_trace (s!"{n1}/{n2}", count)
 
 
 end PremiseSelection
