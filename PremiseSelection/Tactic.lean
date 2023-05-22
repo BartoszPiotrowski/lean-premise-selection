@@ -1,7 +1,6 @@
 import Lean
 import PremiseSelection.Forest
 import PremiseSelection.StatementFeatures
-import PremiseSelection.Widget
 
 namespace PremiseSelection
 
