@@ -23,14 +23,21 @@ if [ ! -d data/proof_sources ]; then
     cd ../..
 fi
 
-find $MATHBIN -name '*.lean' ! -name "All.lean" | while read f; do
-    module=`echo $f | sed 's/.*Mathbin/Mathbin/g; s/.lean$//g; s/\//./g'`
+extract() {
+    SCRIPT_DIR=$1
+    OUT_DIR=$2
+    PARAMS=$3
+    module=$4
+    module=`echo $module | sed 's/.lean$//g; s/\//./g'`
+    module=`echo $module | sed 's/.*Mathbin/Mathbin/g'`
+    module=`echo $module | sed 's/.*Mathlib/Mathlib/g'`
     echo "Extracting from $module"
     $SCRIPT_DIR/extract-from-module.sh $module $OUT_DIR $PARAMS
-done
+}
+export -f extract
 
-find $MATHLIB -name '*.lean' ! -name "All.lean" | while read f; do
-    module=`echo $f | sed 's/.*Mathlib/Mathlib/g; s/.lean$//g; s/\//./g'`
-    echo "Extracting from $module"
-    $SCRIPT_DIR/extract-from-module.sh $module $OUT_DIR $PARAMS
-done
+find $MATHBIN -name '*.lean' ! -name "All.lean" | \
+    parallel "extract $SCRIPT_DIR $OUT_DIR $PARAMS {}"
+find $MATHLIB -name '*.lean' ! -name "All.lean" | \
+    parallel "extract $SCRIPT_DIR $OUT_DIR $PARAMS {}"
+
