@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-#
+
+JOBS=10
 MATHBIN=lake-packages/mathlib3port/Mathbin
 MATHLIB=lake-packages/mathlib/Mathlib
 
@@ -38,5 +39,7 @@ extract() {
 export -f extract
 
 find $MATHBIN -name '*.lean' ! -name "All.lean" | \
-    parallel "extract {} $SCRIPT_DIR $OUT_DIR $PARAMS"
+    parallel -j $JOBS "extract {} $SCRIPT_DIR $OUT_DIR $PARAMS"
+find $MATHLIB -name '*.lean' ! -name "All.lean" | \
+    parallel -j $JOBS "extract {} $SCRIPT_DIR $OUT_DIR $PARAMS"
 
