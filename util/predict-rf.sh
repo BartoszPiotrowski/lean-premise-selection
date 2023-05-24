@@ -10,7 +10,6 @@ PREDS=${LOG%.*}.preds
 
 RF_DIR=../lean-premise-selection
 PREDICT_BINARY=$RF_DIR/build/bin/Predict
-cd $RF_DIR && lake build && cd $DIR &&
 echo "Log being written to $LOG" &&
 echo "Evaluating on $TEST_FEATURES" &&
 {
