@@ -1,7 +1,5 @@
 import Mathbin
-
 import Mathbin.Algebra.Group.Basic
-
 import PremiseSelection.Extractor
 
 extract_premises_from_thm comp_assoc_right
