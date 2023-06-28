@@ -19,7 +19,7 @@ theorem at hand. The user may also extract their own training data and train
 their own machine learning model for premise selection.
 
 The paper describing the design of the tool and its evaluation was submitted
-to ITP 2023 and is available [here](https://bartoszpiotrowski.pl/p/lean-premise-selection-paper.pdf).
+to ITP 2023 and is available [here](http://bartoszpiotrowski.pl/p/lean-premise-selection-paper.pdf).
 
 
 # Getting started
@@ -53,9 +53,9 @@ repository mainly for the purpose of demonstration. One can download
 'full-size', more capable models by running:
 
 ```
-wget -P data https://bartoszpiotrowski.pl/p/forest.all.nb
-wget -P data https://bartoszpiotrowski.pl/p/forest.source.nb
-wget -P data https://bartoszpiotrowski.pl/p/forest.math.nb
+wget -P data http://bartoszpiotrowski.pl/p/forest.all.nb
+wget -P data http://bartoszpiotrowski.pl/p/forest.source.nb
+wget -P data http://bartoszpiotrowski.pl/p/forest.math.nb
 ```
 
 These three models were trained using a combination of `name` and `bigram`
