@@ -18,13 +18,12 @@ The user can ask for advice from the trained model by using the provided tactic
 theorem at hand. The user may also extract their own training data and train
 their own machine learning model for premise selection.
 
-The paper describing the design of the tool and its evaluation was submitted
-to ITP 2023 and is available [here](http://bartoszpiotrowski.pl/p/lean-premise-selection-paper.pdf).
+The paper describing the design of the tool and its evaluation was accepted to TABLEAUX 2023 is available [here](https://arxiv.org/pdf/2304.00994.pdf).
 
 
 # Getting started
 
-Make sure that `elan` is installed an up to date. Build the project by running:
+Make sure that `elan` is installed and up to date. Build the project by running:
 ```
 lake build
 ```
@@ -53,9 +52,9 @@ repository mainly for the purpose of demonstration. One can download
 'full-size', more capable models by running:
 
 ```
-wget -P data http://bartoszpiotrowski.pl/p/forest.all.nb
-wget -P data http://bartoszpiotrowski.pl/p/forest.source.nb
-wget -P data http://bartoszpiotrowski.pl/p/forest.math.nb
+wget -P data http://grid01.ciirc.cvut.cz/~bartosz/forest.all.nb
+wget -P data http://grid01.ciirc.cvut.cz/~bartosz/forest.source.nb
+wget -P data http://grid01.ciirc.cvut.cz/~bartosz/forest.math.nb
 ```
 
 These three models were trained using a combination of `name` and `bigram`
