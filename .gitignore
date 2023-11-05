@@ -1,5 +1,6 @@
 /build
 /lake-packages
+lakefile.olean
 /tmp
 /widget/package-lock.json.trace
 /data/*
