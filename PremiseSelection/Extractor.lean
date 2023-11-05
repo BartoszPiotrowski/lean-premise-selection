@@ -160,18 +160,6 @@ private def extractPremisesFromModule
   -- Source filter.
   if source then
     if let some modulePath ← proofSourcePath moduleName then
-      -- Avoid very large files. In particular mathbin files over 2MB.
-      let mut fileSize := 0
-      if let some synportPath ← pathFromMathlibImport moduleName then
-        let mdata ← System.FilePath.metadata synportPath
-        fileSize := mdata.byteSize
-      if fileSize == 0 then
-        dbg_trace s! "Aborted {moduleName}, ported file not found"
-        return ()
-      if fileSize > 2 * 1024 * 1024 then
-        dbg_trace s! "Aborted {moduleName}, size {fileSize}"
-        return ()
-
       -- If source premises and path found, then create a filter looking at
       -- proof source. If no proof source is found, no filter is applied.
       let data ← IO.FS.readFile modulePath
