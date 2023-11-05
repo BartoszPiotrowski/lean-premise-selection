@@ -19,27 +19,21 @@ where
 
 end String
 
-/-- Find file path from module imported from Mathbin. -/
-def pathFromMathbinImport (mod : Name) : MetaM (Option FilePath) := do
-  let mathbinPath : System.FilePath := "." / "lake-packages" / "mathlib3port"
-  SearchPath.findModuleWithExt [mathbinPath] "lean" mod
-
-/-- Find file path from module imported from Mathbin. -/
+/-- Find file path from module imported from Mathlib. -/
 def pathFromMathlibImport (mod : Name) : MetaM (Option FilePath) := do
-  let mathbinPath : System.FilePath := "." / "lake-packages" / "mathlib"
-  SearchPath.findModuleWithExt [mathbinPath] "lean" mod
+  let mathlibPath : System.FilePath := "." / "lake-packages" / "mathlib"
+  SearchPath.findModuleWithExt [mathlibPath] "lean" mod
 
 /-- Find file path of JSON with proof sources. -/
 def proofSourcePath (mod : Name) : MetaM (Option FilePath) := do
-  let mathbinPath : System.FilePath := "." / "data" / "proof_sources"
-  SearchPath.findModuleWithExt [mathbinPath] "json" mod
+  let mathlibPath : System.FilePath := "." / "data" / "proof_sources"
+  SearchPath.findModuleWithExt [mathlibPath] "json" mod
 
 /-- Given a theorem name and a file path, extract the proof text. -/
 def proofSource (thm : Name) (json : Json) : MetaM (Option String) := do
   if let Name.str _ thmStr := thm then
     match json.getObjVal? thmStr  with
-    | Except.ok (Json.str s) =>
-        return some s
+    | Except.ok (Json.str s) => return some s
     | _ => return none
   return none
 

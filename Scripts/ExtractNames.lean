@@ -14,7 +14,7 @@ def extractNamesFromImportsToFiles (namesPath : FilePath) : MetaM Unit := do
     let isMathImport :=
       moduleName.getRoot == `Mathbin || moduleName.getRoot == `Mathlib
     if imports.contains moduleName && isMathImport then
-      let namesHandle ← Handle.mk namesPath Mode.append false
+      let namesHandle ← Handle.mk namesPath Mode.append
       let insert : String → IO Unit := fun name => do
         namesHandle.putStrLn name
       for cinfo in moduleData.constants do
@@ -33,7 +33,7 @@ unsafe def main (args : List String) : IO Unit := do
       let moduleName := decopmosedNameStr.foldl Name.append Lean.Name.anonymous
       moduleNames := moduleNames.push moduleName
 
-  withImportModules (moduleNames.data.map ({ module := · })) {} 0 fun env => do
+  withImportModules (moduleNames.map ({ module := · })) {} 0 fun env => do
     let m := extractNamesFromImportsToFiles namesPath
     let ctx : Core.Context := {
       fileName      := "",

@@ -1,5 +1,5 @@
 import Lean
-import Mathlib.Control.Writer
+import Mathlib.Control.Monad.Writer
 import PremiseSelection.StatementFeatures
 import PremiseSelection.ProofSource
 
@@ -162,11 +162,7 @@ private def extractPremisesFromModule
     if let some modulePath ← proofSourcePath moduleName then
       -- Avoid very large files. In particular mathbin files over 2MB.
       let mut fileSize := 0
-      let pathFromImport :=
-        if moduleName.getRoot == `Mathbin then
-          pathFromMathbinImport
-        else pathFromMathlibImport
-      if let some synportPath ← pathFromImport moduleName then
+      if let some synportPath ← pathFromMathlibImport moduleName then
         let mdata ← System.FilePath.metadata synportPath
         fileSize := mdata.byteSize
       if fileSize == 0 then
@@ -270,7 +266,7 @@ def extractUserDefinitionsFromModuleToFile
   : MetaM Unit := do
   let labelsHandle ← Handle.mk outputPath Mode.append
   for cinfo in moduleData.constants do
-    if let some modulePath ← pathFromMathbinImport moduleName then
+    if let some modulePath ← pathFromMathlibImport moduleName then
       let args := #[cinfo.name.toString, modulePath.toString]
       let output ← IO.Process.output { cmd := "grep", args := args }
       if output.exitCode == 0 && !output.stdout.isEmpty then
@@ -295,8 +291,7 @@ def extractPremisesFromImportsToFiles
 
   let mut count := 0
   for (moduleName, moduleData) in Array.zip moduleNamesArray moduleDataArray do
-    let isMathImport :=
-      moduleName.getRoot == `Mathbin || moduleName.getRoot == `Mathlib
+    let isMathImport := moduleName.getRoot == `Mathlib
     if imports.contains moduleName && isMathImport then
       count := count + 1
       extractPremisesFromModuleToFiles
