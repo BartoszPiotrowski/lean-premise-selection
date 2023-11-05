@@ -13,7 +13,6 @@ require proofwidgets from git
 @[default_target]
 lean_lib PremiseSelection
 
--- Separate test library. Useful to import mathbin separately.
 @[default_target]
 lean_lib Tests
 

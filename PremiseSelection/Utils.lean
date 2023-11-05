@@ -56,7 +56,7 @@ def split' {α} (l : List α) :=
     | h :: t => splitAux t right (h :: left)
   splitAux l [] []
 
--- NOTE: Renamed because it was already defined in mathbin.
+-- NOTE: Renamed because it was already defined.
 partial def merge' {α} (compare : α → α → Bool) (l1 l2 : List α) :=
   match (l1, l2) with
   | ([], l) => l
@@ -65,7 +65,7 @@ partial def merge' {α} (compare : α → α → Bool) (l1 l2 : List α) :=
     if compare h1 h2 then h1 :: merge' compare t1 l2
     else                  h2 :: merge' compare t2 l1
 
--- NOTE: Renamed because it was already defined in mathbin.
+-- NOTE: Renamed because it was already defined.
 partial def mergeSort' {α} (compare : α → α → Bool) (l : List α) :=
   match l with
   | [] => l
