@@ -12,10 +12,11 @@ mkdir $OUT_DIR
 if [ ! -d data/proof_sources ]; then
     mkdir data/proof_sources
     cd data/proof_sources
-    git clone https://github.com/ramonfmir/mathport.git
-    mv mathport/Outputs/src/mathbin/Mathbin .
-    cp -r Mathbin Mathlib
-    rm -rf mathport
+    # git clone https://github.com/ramonfmir/mathport.git
+    # mv mathport/Outputs/src/mathbin/Mathbin .
+    # cp -r Mathbin Mathlib
+    # rm -rf mathport
+    lean --run ../../PremiseSelection/ProofSourceMaker.lean
     cd ../..
 fi
 
