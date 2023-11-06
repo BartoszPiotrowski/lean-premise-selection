@@ -26,7 +26,7 @@ def pathFromMathlibImport (mod : Name) : MetaM (Option FilePath) := do
 
 /-- Find file path of JSON with proof sources. -/
 def proofSourcePath (mod : Name) : MetaM (Option FilePath) := do
-  let mathlibPath : System.FilePath := "." / "data" / "proof_sources"
+  let mathlibPath : System.FilePath := "." / "data" / "proof_sources" / "mathlib"
   SearchPath.findModuleWithExt [mathlibPath] "json" mod
 
 /-- Given a theorem name and a file path, extract the proof text. -/
