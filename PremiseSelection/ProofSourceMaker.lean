@@ -3,19 +3,22 @@ import PremiseSelection.ProofSource
 
 open Lean Meta Elab System
 
-
-partial def getNameFromCommand : Syntax → Option String
-  | Syntax.missing => none
-  | Syntax.atom _ _ => none
-  | Syntax.ident _ _ _ _ => none
-  | Syntax.node _ ``Lean.Parser.Command.declId args =>
-      match args[0]! with
-      | Syntax.ident _ _ val _ => some (toString val)
-      | _ => none
-  | Syntax.node _ _ args => args.foldl (init := none) fun acc? arg =>
-      match acc? with
-      | some s => some s
-      | none => getNameFromCommand arg
+def getNameFromCommand (command : Syntax) : Option String :=
+  getNameFromCommandAux 10 command
+where
+  getNameFromCommandAux : Nat → Syntax → Option String
+    | 0, _ => none
+    | _, Syntax.missing => none
+    | _, Syntax.atom _ _ => none
+    | _, Syntax.ident _ _ _ _ =>  none
+    | _, Syntax.node _ ``Lean.Parser.Command.declId args =>
+        match args[0]! with
+        | Syntax.ident _ _ val _ => some (toString val)
+        | _ => none
+    | n + 1, Syntax.node _ _ args => args.foldl (init := none) fun acc? arg =>
+        match acc? with
+        | some s => some s
+        | none => getNameFromCommandAux n arg
 
 def getNameAndSourceFromCommand (command : Syntax) :
   MetaM (Option (String × String)) := do
@@ -45,7 +48,6 @@ def getNamesAndSourcesFromFile (path : FilePath) (content : String) :
   let commandState := Command.mkState env messages opts
   let s ← IO.processCommands inputCtx parserState commandState
   let commands := s.commands.pop
-
   for command in commands do
     let nameAndSource? ← getNameAndSourceFromCommand command
     match nameAndSource? with
@@ -54,39 +56,43 @@ def getNamesAndSourcesFromFile (path : FilePath) (content : String) :
 
   return m
 
-def makeProofSource : MetaM Unit := do
-  let env ← getEnv
-  let moduleNamesArray := env.header.moduleNames
+def makeProofSource (moduleName : Name) : MetaM Unit := do
+  if let some path ← pathFromMathlibImport moduleName then
+    IO.println s!"Making proof sources for {moduleName} ({path})"
 
-  for moduleName in moduleNamesArray do
-    if let some path ← pathFromMathlibImport moduleName then
-      IO.println s!"Making proof sources for {moduleName} ({path})"
+    -- Get names and sources from file.
+    let content ← IO.FS.readFile path
+    let proofSources ← getNamesAndSourcesFromFile path content
+    let proofSourcesJson := Json.mkObj <| Array.data <|
+      proofSources.map fun (name, source) => (name, Json.str source)
 
-      -- Get names and sources from file.
-      let content ← IO.FS.readFile path
-      let proofSources ← getNamesAndSourcesFromFile path content
-      let proofSourcesJson := Json.mkObj <| Array.data <|
-        proofSources.map fun (name, source) => (name, Json.str source)
+    -- Make proof source file.
+    let psPathPre := path.withExtension "json"
+    let psPathComponents :=
+      [".", "data", "proof_sources"] ++ psPathPre.components.drop 2
+    let psPath := mkFilePath psPathComponents
+    if ← psPath.pathExists then
+      pure () -- IO.FS.removeFile psPath
+    if let some parent := psPath.parent then
+      IO.FS.createDirAll parent
 
-      -- Make proof source file.
-      let psPathPre := path.withExtension "json"
-      let psPathComponents :=
-        [".", "data", "proof_sources"] ++ psPathPre.components.drop 2
-      let psPath := mkFilePath psPathComponents
-      if ← psPath.pathExists then
-        IO.FS.removeFile psPath
-      if let some parent := psPath.parent then
-        IO.FS.createDirAll parent
+    -- Write proof source file.
+    IO.FS.writeFile psPath <| toString <| Json.pretty <| proofSourcesJson
 
-      -- Write proof source file.
-      IO.FS.writeFile psPath <| toString <| Json.pretty <| proofSourcesJson
+unsafe def main (args : List String) : IO Unit := do
+  if args.length != 1 then
+    throw <| IO.userError "Usage: make_proof_sources <module_name>"
 
-unsafe def main : IO Unit := do
-  withImportModules #[`Mathlib] {} 0 fun env => do
-    let m := makeProofSource
+  let moduleNameRaw := args.get! 0
+  let moduleNameComponents := moduleNameRaw.splitOn "."
+  let mut moduleName := Name.anonymous
+  for c in moduleNameComponents do
+    moduleName := Name.mkStr moduleName c
+
+  withImportModules #[moduleName] {} 0 fun env => do
     let ctx : Core.Context := {
       fileName      := "",
       fileMap       := default,
-      maxHeartbeats := 10000000000,
-      maxRecDepth   := 10000000000 }
-    let _ ← m.toIO ctx { env := env }
+      maxHeartbeats := 10 ^ 100,
+      maxRecDepth   := 10 ^ 100 }
+    let _ ← (makeProofSource moduleName).toIO ctx { env := env }
