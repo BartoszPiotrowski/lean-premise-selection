@@ -8,16 +8,9 @@ OUT_DIR=data/extracted.$PARAMS_NAME
 SCRIPT_DIR=`dirname $0`
 mkdir $OUT_DIR
 
-# Download proof sources.
+# Make proof sources.
 if [ ! -d data/proof_sources ]; then
-    mkdir data/proof_sources
-    cd data/proof_sources
-    # git clone https://github.com/ramonfmir/mathport.git
-    # mv mathport/Outputs/src/mathbin/Mathbin .
-    # cp -r Mathbin Mathlib
-    # rm -rf mathport
-    lean --run ../../PremiseSelection/ProofSourceMaker.lean
-    cd ../..
+    $SCRIPT_DIR/make-all-proof-sources.sh
 fi
 
 find $MATHLIB -name '*.lean' ! -name "Mathlib.lean" | while read f; do
