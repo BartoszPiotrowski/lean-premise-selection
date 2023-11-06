@@ -3,24 +3,34 @@ import PremiseSelection.ProofSource
 
 open Lean Meta Elab System
 
-def splitUsingConstants (path : FilePath) (content : String) (constants : Array ConstantInfo) :
-  MetaM (HashMap Name String) := do
-  let mut m := HashMap.empty
-  -- let thmNames : Array String := constants.filterMap <| fun cinfo =>
-  --   match cinfo with
-  --   | ConstantInfo.thmInfo val => some (toString val.name.componentsRev.head!)
-  --   | _ => none
-  -- let mut mutContent := content
-  -- let mut thmNamesAndDelims := #[]
-  -- for thmName in thmNames do
-  --   match mutContent.findSubstr? thmName.toSubstring with
-  --   | some substr =>
-  --       let idx := substr.stopPos.byteIdx
-  --       mutContent := mutContent.drop idx
-  --       thmNamesAndDelims := thmNamesAndDelims.push (thmName, idx)
-  --   | _ => continue
 
-  -- IO.println thmNamesAndDelims
+partial def getNameFromCommand : Syntax → Option String
+  | Syntax.missing => none
+  | Syntax.atom _ _ => none
+  | Syntax.ident _ _ _ _ => none
+  | Syntax.node _ ``Lean.Parser.Command.declId args =>
+      match args[0]! with
+      | Syntax.ident _ _ val _ => some (toString val)
+      | _ => none
+  | Syntax.node _ _ args => args.foldl (init := none) fun acc? arg =>
+      match acc? with
+      | some s => some s
+      | none => getNameFromCommand arg
+
+def getNameAndSourceFromCommand (command : Syntax) :
+  MetaM (Option (String × String)) := do
+  match getNameFromCommand command with
+  | some name =>
+      try
+        let source := toString <| ← PrettyPrinter.ppCommand ⟨command⟩
+        return some (name, source)
+      catch _ =>
+        return none
+  | _ => return none
+
+def getNamesAndSourcesFromFile (path : FilePath) (content : String) :
+  MetaM (Array (String × String)) := do
+  let mut m := #[]
 
   let opts := Options.empty
 
@@ -28,38 +38,50 @@ def splitUsingConstants (path : FilePath) (content : String) (constants : Array 
   let (header, parserState, messages) ← Parser.parseHeader inputCtx
   let (env, messages) ← processHeader header opts messages inputCtx
 
+  if messages.hasErrors then
+    return m
+
   let env := env.setMainModule (← moduleNameOfFileName path none)
   let commandState := Command.mkState env messages opts
   let s ← IO.processCommands inputCtx parserState commandState
-  let env' := s.commandState.env
   let commands := s.commands.pop
-  let trees := s.commandState.infoState.trees.toArray
-  -- Split the file by cmdPos.
-  -- detect if command is a theorem (command.theorem ?)
-  -- get the name and associated proof.
 
-  IO.println s!"{commands.size} commands"
-  IO.println s!"{commands[7]!}"
+  for command in commands do
+    let nameAndSource? ← getNameAndSourceFromCommand command
+    match nameAndSource? with
+    | some (name, source) => m := m.push (name, source)
+    | _ => continue
 
   return m
-
 
 def makeProofSource : MetaM Unit := do
   let env ← getEnv
   let moduleNamesArray := env.header.moduleNames
-  let moduleDataArray := env.header.moduleData
-  for (moduleName, moduleData) in moduleNamesArray.zip moduleDataArray do
+
+  for moduleName in moduleNamesArray do
     if let some path ← pathFromMathlibImport moduleName then
-      let constants := moduleData.constants
-      let content ← IO.FS.readFile path
       IO.println s!"Making proof sources for {moduleName} ({path})"
-      let _m ← splitUsingConstants path content constants
-      break
 
-unsafe def main (args : List String) : IO Unit := do
-  -- let outputPath := "data/proof_sources"
-  -- let mut moduleNames ← IO.FS.lines "lake-packages/mathlib/Mathlib/Mathlib.lean"
+      -- Get names and sources from file.
+      let content ← IO.FS.readFile path
+      let proofSources ← getNamesAndSourcesFromFile path content
+      let proofSourcesJson := Json.mkObj <| Array.data <|
+        proofSources.map fun (name, source) => (name, Json.str source)
 
+      -- Make proof source file.
+      let psPathPre := path.withExtension "json"
+      let psPathComponents :=
+        [".", "data", "proof_sources"] ++ psPathPre.components.drop 2
+      let psPath := mkFilePath psPathComponents
+      if ← psPath.pathExists then
+        IO.FS.removeFile psPath
+      if let some parent := psPath.parent then
+        IO.FS.createDirAll parent
+
+      -- Write proof source file.
+      IO.FS.writeFile psPath <| toString <| Json.pretty <| proofSourcesJson
+
+unsafe def main : IO Unit := do
   withImportModules #[`Mathlib] {} 0 fun env => do
     let m := makeProofSource
     let ctx : Core.Context := {
