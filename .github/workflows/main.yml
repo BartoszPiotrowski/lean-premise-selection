@@ -20,6 +20,11 @@ jobs:
           echo "$HOME/.elan/bin" >> $GITHUB_PATH
       - name: Checkout
         uses: actions/checkout@v3
+      - name: Build widget 
+        run: |
+          npm i
+          npm run build -- --tsxName index
+        working-directory: ./widget
       - name: Build lean-premise-selection
         run: |
           lake update
