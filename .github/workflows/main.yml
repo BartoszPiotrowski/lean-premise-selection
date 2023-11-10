@@ -10,6 +10,7 @@ on:
 jobs:
   # Build lean-premise-selection, make proof sources and upload artifact.
   make_all_proof_sources:
+    runs-on: ubuntu-latest
     steps:
       - name: Install elan
         run: |
