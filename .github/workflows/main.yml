@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: ["mathlib4"]
+  
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  # Build lean-premise-selection, make proof sources and upload artifact.
+  make_all_proof_sources:
+    steps:
+      - name: Install elan
+        run: |
+          set -o pipefail
+          curl -sSfL https://github.com/leanprover/elan/releases/download/v3.0.0/elan-x86_64-unknown-linux-gnu.tar.gz | tar xz
+          ./elan-init -y --default-toolchain leanprover/lean4:v4.3.0-rc1
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Build lean-premise-selection
+        run: |
+          lake update
+          lake exe cache get
+          lake build
+      - name: Run proof sources script
+        run: |
+          ./util/make-all-proof-sources.sh
+      - name: Compress proof sources 
+        run: |
+          zip -r data/proof_sources.zip data/proof_sources
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: proof_sources 
+          path: data/proof_sources.zip
+
+  # extract_all_data:
+  #   needs: make_all_proof_sources
+  #   steps:
+  #     - name: Install elan
+  #       run: |
+  #         set -o pipefail
+  #         curl -sSfL https://github.com/leanprover/elan/releases/download/v3.0.0/elan-x86_64-unknown-linux-gnu.tar.gz | tar xz
+  #         ./elan-init -y --default-toolchain leanprover/lean4:v4.3.0-rc1
+  #         echo "$HOME/.elan/bin" >> $GITHUB_PATH
+  #     - name: Checkout
+  #       uses: actions/checkout@v3
+  #     - name: Build lean-premise-selection
+  #       run: |
+  #         lake update
+  #         lake exe cache get
+  #         lake build
+  #     - name: Run extractor
+  #       run:
+  #         ./util/extract-from-all-modules.sh
