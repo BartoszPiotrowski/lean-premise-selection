@@ -1,32 +1,28 @@
 #!/usr/bin/env bash
 #
-MATHLIB=lake-packages/mathlib/Mathlib
-
 SCRIPT_DIR=`dirname $0`
 
 MODULES_TO_PROCESS=()
 
-find $MATHLIB -name '*.lean' ! -name "Mathlib.lean" | while read f; do
-    module=`echo $f | sed 's/.*Mathlib/Mathlib/g; s/.lean$//g; s/\//./g'`
+while read f; do
+    module=`echo $f | sed 's/.*Mathlib/Mathlib/g; s/\//./g'`
     MODULES_TO_PROCESS+=("$module")
 
-    if [ ${#MODULES_TO_PROCESS[@]} -eq 8 ]; then
+    if [ ${#MODULES_TO_PROCESS[@]} -eq 4 ]; then
         (
-            for module in "${MODULES_TO_PROCESS[@]}"; do
-                $SCRIPT_DIR/make-proof-sources.sh "$module" &
-            done
+            $SCRIPT_DIR/make-proof-sources.sh "${MODULES_TO_PROCESS[0]}" &
+            $SCRIPT_DIR/make-proof-sources.sh "${MODULES_TO_PROCESS[1]}" &
+            $SCRIPT_DIR/make-proof-sources.sh "${MODULES_TO_PROCESS[2]}" &
+            $SCRIPT_DIR/make-proof-sources.sh "${MODULES_TO_PROCESS[3]}" &
             wait
         )
         MODULES_TO_PROCESS=()
     fi
-done
+done < "$SCRIPT_DIR/all_modules.txt";
 
 # Run the remaining modules (if any) outside the loop
 if [ ${#MODULES_TO_PROCESS[@]} -gt 0 ]; then
-    (
-        for module in "${MODULES_TO_PROCESS[@]}"; do
-            $SCRIPT_DIR/make-proof-sources.sh "$module" &
-        done
-        wait
-    )
+    for module in "${MODULES_TO_PROCESS[@]}"; do
+        $SCRIPT_DIR/make-proof-sources.sh "$module"
+    done
 fi
