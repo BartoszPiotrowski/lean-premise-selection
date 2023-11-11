@@ -232,20 +232,26 @@ def extractPremisesFromModuleToFiles
   (moduleName : Name) (moduleData : ModuleData)
   (labelsPath featuresPath : FilePath) (userOptions : UserOptions := default)
   : MetaM Unit := do
-  let labelsHandle ← Handle.mk labelsPath Mode.append
-  let featuresHandle ← Handle.mk featuresPath Mode.append
+  let labelsExists ← labelsPath.pathExists
+  let featuresExists ← featuresPath.pathExists
+  if labelsExists && featuresExists then
+    dbg_trace s!"{labelsPath} and {featuresPath} already exist."
+    pure ()
+  else
+    let labelsHandle ← Handle.mk labelsPath Mode.append
+    let featuresHandle ← Handle.mk featuresPath Mode.append
 
-  let insert : TheoremPremises → IO Unit := fun data => do
-    labelsHandle.putStrLn (getLabels data)
-    featuresHandle.putStrLn (getFeatures data userOptions.format)
+    let insert : TheoremPremises → IO Unit := fun data => do
+      labelsHandle.putStrLn (getLabels data)
+      featuresHandle.putStrLn (getFeatures data userOptions.format)
 
-  let minDepth := userOptions.minDepth
-  let maxDepth := userOptions.maxDepth
-  let noAux := userOptions.noAux
-  let source := userOptions.source
-  let math := userOptions.math
-  extractPremisesFromModule
-    insert moduleName moduleData minDepth maxDepth noAux source math
+    let minDepth := userOptions.minDepth
+    let maxDepth := userOptions.maxDepth
+    let noAux := userOptions.noAux
+    let source := userOptions.source
+    let math := userOptions.math
+    extractPremisesFromModule
+      insert moduleName moduleData minDepth maxDepth noAux source math
 
 /-- Go through the whole module and find the defininions that appear in the
 corresponding source file. This was used to generate `math_names`. -/
@@ -265,14 +271,6 @@ def extractUserDefinitionsFromModuleToFile
 def extractPremisesFromImportsToFiles
   (labelsPath featuresPath : FilePath) (userOptions : UserOptions := default)
   : MetaM Unit := do
-  let labelsExists ← labelsPath.pathExists
-  let featuresExists ← featuresPath.pathExists
-  if labelsExists && featuresExists then
-    pure ()
-
-  IO.FS.writeFile labelsPath ""
-  IO.FS.writeFile featuresPath ""
-
   dbg_trace s!"Extracting premises from imports to {labelsPath}, {featuresPath}."
 
   let env ← getEnv
