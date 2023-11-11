@@ -1,0 +1,161 @@
+name: Extract data
+
+on:
+  push:
+    branches: ["mathlib4"]
+  
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  
+  # Step 1: generate proof sources.
+  
+  make_all_proof_sources:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/build
+      - name: Run proof sources script
+        run: |
+          ./util/make-all-proof-sources.sh
+      - name: Compress proof sources 
+        run: |
+          zip -r proof_sources.zip data/proof_sources
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: proof_sources 
+          path: proof_sources.zip
+
+  # Step 2: extract data from mathlib (split into 4 parallel jobs).
+
+  extract_data_1:
+    needs: make_all_proof_sources
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/build
+      - uses: actions/download-artifact@v3
+        with:
+          name: proof_sources
+      - name: Unzip proof sources 
+        run: |
+          unzip proof_sources.zip
+      - name: Extract data from modules 0-999
+        run: |
+          ./util/extract-from-module-range.sh 0 999
+      - name: Compress data 
+        run: | 
+          zip -r extracted_data_1.zip data/extracted.+source.+n.+b
+      - name: Upload artifact 
+        uses: actions/upload-artifact@v3
+        with:
+          name: extracted_data_1
+          path: extracted_data_1.zip
+          retention-days: 1
+  
+  extract_data_2:
+    needs: make_all_proof_sources
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/build
+      - uses: actions/download-artifact@v3
+        with:
+          name: proof_sources
+      - name: Unzip proof sources 
+        run: |
+          unzip proof_sources.zip
+      - name: Extract data from modules 1000-1999
+        run: |
+          ./util/extract-from-module-range.sh 1000 1999
+      - name: Compress data 
+        run: | 
+          zip -r extracted_data_2.zip data/extracted.+source.+n.+b
+      - name: Upload artifact 
+        uses: actions/upload-artifact@v3
+        with:
+          name: extracted_data_2
+          path: extracted_data_2.zip
+          retention-days: 1
+  
+  extract_data_3:
+    needs: make_all_proof_sources
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/build
+      - uses: actions/download-artifact@v3
+        with:
+          name: proof_sources
+      - name: Unzip proof sources 
+        run: |
+          unzip proof_sources.zip
+      - name: Extract data from modules 2000-2999
+        run: |
+          ./util/extract-from-module-range.sh 2000 2999
+      - name: Compress data 
+        run: | 
+          zip -r extracted_data_3.zip data/extracted.+source.+n.+b
+      - name: Upload artifact 
+        uses: actions/upload-artifact@v3
+        with:
+          name: extracted_data_3
+          path: extracted_data_3.zip
+          retention-days: 1
+  
+  extract_data_4:
+    needs: make_all_proof_sources
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/build
+      - uses: actions/download-artifact@v3
+        with:
+          name: proof_sources
+      - name: Unzip proof sources 
+        run: |
+          unzip proof_sources.zip
+      - name: Extract data from modules 3000-3999
+        run: |
+          ./util/extract-from-module-range.sh 3000 3999
+      - name: Compress data 
+        run: | 
+          zip -r extracted_data_4.zip data/extracted.+source.+n.+b
+      - name: Upload artifact 
+        uses: actions/upload-artifact@v3
+        with:
+          name: extracted_data_4
+          path: extracted_data_4.zip
+          retention-days: 1
+  
+  # Step 3: combine the extracted data.
+
+  combine_data:
+    needs: [extract_data_1, extract_data_2, extract_data_3, extract_data_4]
+    runs-on: ubuntu-latest
+    - uses: actions/download-artifact@v3
+        with:
+          name: extracted_data_1
+    - uses: actions/download-artifact@v3
+        with:
+          name: extracted_data_2
+    - uses: actions/download-artifact@v3
+        with:
+          name: extracted_data_3
+    - uses: actions/download-artifact@v3
+        with:
+          name: extracted_data_4
+    - name: Package data 
+      run: |
+        unzip extracted_data_1.zip
+        unzip extracted_data_2.zip
+        unzip extracted_data_3.zip
+        unzip extracted_data_4.zip
+        zip -r extracted_data.zip data/extracted.+source.+n.+b
+    - name: Upload artifact 
+        uses: actions/upload-artifact@v3
+        with:
+          name: extracted_data
+          path: extracted_data.zip
