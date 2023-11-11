@@ -12,24 +12,7 @@ jobs:
   make_all_proof_sources:
     runs-on: ubuntu-latest
     steps:
-      - name: Install elan
-        run: |
-          set -o pipefail
-          curl -sSfL https://github.com/leanprover/elan/releases/download/v3.0.0/elan-x86_64-unknown-linux-gnu.tar.gz | tar xz
-          ./elan-init -y --default-toolchain leanprover/lean4:v4.3.0-rc1
-          echo "$HOME/.elan/bin" >> $GITHUB_PATH
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Build widget 
-        run: |
-          npm i
-          npm run build -- --tsxName index
-        working-directory: ./widget
-      - name: Build lean-premise-selection
-        run: |
-          lake update
-          lake exe cache get
-          lake build
+      - uses: 
       - name: Run proof sources script
         run: |
           ./util/make-all-proof-sources.sh
