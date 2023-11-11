@@ -60,24 +60,25 @@ def makeProofSource (moduleName : Name) : MetaM Unit := do
   if let some path ← pathFromMathlibImport moduleName then
     IO.println s!"Making proof sources for {moduleName} ({path})"
 
-    -- Get names and sources from file.
-    let content ← IO.FS.readFile path
-    let proofSources ← getNamesAndSourcesFromFile path content
-    let proofSourcesJson := Json.mkObj <| Array.data <|
-      proofSources.map fun (name, source) => (name, Json.str source)
-
     -- Make proof source file.
     let psPathPre := path.withExtension "json"
     let psPathComponents :=
       [".", "data", "proof_sources"] ++ psPathPre.components.drop 2
     let psPath := mkFilePath psPathComponents
     if ← psPath.pathExists then
-      pure () -- IO.FS.removeFile psPath
-    if let some parent := psPath.parent then
-      IO.FS.createDirAll parent
+      IO.println s!"File already exists, remove it if you want to regenerate it."
+    else
+      if let some parent := psPath.parent then
+        IO.FS.createDirAll parent
 
-    -- Write proof source file.
-    IO.FS.writeFile psPath <| toString <| Json.pretty <| proofSourcesJson
+      -- Get names and sources from file.
+      let content ← IO.FS.readFile path
+      let proofSources ← getNamesAndSourcesFromFile path content
+      let proofSourcesJson := Json.mkObj <| Array.data <|
+        proofSources.map fun (name, source) => (name, Json.str source)
+
+      -- Write proof source file.
+      IO.FS.writeFile psPath <| toString <| Json.pretty <| proofSourcesJson
 
 unsafe def main (args : List String) : IO Unit := do
   if args.length != 1 then
