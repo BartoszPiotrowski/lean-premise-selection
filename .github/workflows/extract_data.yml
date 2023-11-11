@@ -137,17 +137,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v3
-          with:
-            name: extracted_data_1
+        with:
+          name: extracted_data_1
       - uses: actions/download-artifact@v3
-          with:
-            name: extracted_data_2
+        with:
+          name: extracted_data_2
       - uses: actions/download-artifact@v3
-          with:
-            name: extracted_data_3
+        with:
+          name: extracted_data_3
       - uses: actions/download-artifact@v3
-          with:
-            name: extracted_data_4
+        with:
+          name: extracted_data_4
       - name: Package data 
         run: |
           unzip extracted_data_1.zip
@@ -156,7 +156,7 @@ jobs:
           unzip extracted_data_4.zip
           zip -r extracted_data.zip data/extracted.+source.+n.+b
       - name: Upload artifact 
-          uses: actions/upload-artifact@v3
-          with:
-            name: extracted_data
-            path: extracted_data.zip
+        uses: actions/upload-artifact@v3
+        with:
+          name: extracted_data
+          path: extracted_data.zip
