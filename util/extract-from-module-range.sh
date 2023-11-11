@@ -27,6 +27,7 @@ while read f; do
                 $SCRIPT_DIR/extract-from-module.sh "${MODULES_TO_PROCESS[1]}" $OUT_DIR $PARAMS &
                 $SCRIPT_DIR/extract-from-module.sh "${MODULES_TO_PROCESS[2]}" $OUT_DIR $PARAMS &
                 $SCRIPT_DIR/extract-from-module.sh "${MODULES_TO_PROCESS[3]}" $OUT_DIR $PARAMS &
+                wait
             )
             MODULES_TO_PROCESS=()
         fi 
