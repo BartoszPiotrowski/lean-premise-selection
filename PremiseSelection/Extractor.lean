@@ -265,7 +265,10 @@ def extractUserDefinitionsFromModuleToFile
 def extractPremisesFromImportsToFiles
   (labelsPath featuresPath : FilePath) (userOptions : UserOptions := default)
   : MetaM Unit := do
-  dbg_trace s!"Clearing {labelsPath} and {featuresPath}."
+  let labelsExists ← labelsPath.pathExists
+  let featuresExists ← featuresPath.pathExists
+  if labelsExists && featuresExists then
+    pure ()
 
   IO.FS.writeFile labelsPath ""
   IO.FS.writeFile featuresPath ""
