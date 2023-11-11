@@ -1,5 +1,5 @@
 name: 'Build lean-premise-selection'
-runs:
+job:
   using: "composite"
   steps:
     - name: Install elan
@@ -8,8 +8,6 @@ runs:
         curl -sSfL https://github.com/leanprover/elan/releases/download/v3.0.0/elan-x86_64-unknown-linux-gnu.tar.gz | tar xz
         ./elan-init -y --default-toolchain leanprover/lean4:v4.3.0-rc1
         echo "$HOME/.elan/bin" >> $GITHUB_PATH
-    - name: Checkout
-      uses: actions/checkout@v3
     - name: Build widget 
       run: |
         npm i
