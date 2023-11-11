@@ -135,27 +135,28 @@ jobs:
   combine_data:
     needs: [extract_data_1, extract_data_2, extract_data_3, extract_data_4]
     runs-on: ubuntu-latest
-    - uses: actions/download-artifact@v3
-        with:
-          name: extracted_data_1
-    - uses: actions/download-artifact@v3
-        with:
-          name: extracted_data_2
-    - uses: actions/download-artifact@v3
-        with:
-          name: extracted_data_3
-    - uses: actions/download-artifact@v3
-        with:
-          name: extracted_data_4
-    - name: Package data 
-      run: |
-        unzip extracted_data_1.zip
-        unzip extracted_data_2.zip
-        unzip extracted_data_3.zip
-        unzip extracted_data_4.zip
-        zip -r extracted_data.zip data/extracted.+source.+n.+b
-    - name: Upload artifact 
-        uses: actions/upload-artifact@v3
-        with:
-          name: extracted_data
-          path: extracted_data.zip
+    steps:
+      - uses: actions/download-artifact@v3
+          with:
+            name: extracted_data_1
+      - uses: actions/download-artifact@v3
+          with:
+            name: extracted_data_2
+      - uses: actions/download-artifact@v3
+          with:
+            name: extracted_data_3
+      - uses: actions/download-artifact@v3
+          with:
+            name: extracted_data_4
+      - name: Package data 
+        run: |
+          unzip extracted_data_1.zip
+          unzip extracted_data_2.zip
+          unzip extracted_data_3.zip
+          unzip extracted_data_4.zip
+          zip -r extracted_data.zip data/extracted.+source.+n.+b
+      - name: Upload artifact 
+          uses: actions/upload-artifact@v3
+          with:
+            name: extracted_data
+            path: extracted_data.zip
