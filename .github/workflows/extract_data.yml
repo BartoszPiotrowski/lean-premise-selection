@@ -49,17 +49,19 @@ jobs:
       - name: Unzip proof sources 
         run: |
           unzip proof_sources.zip
-      - name: Extract data from modules {{ matrix.num }}-{{ matrix.num + 99 }}
+      - name: Extract data from modules (${{ matrix.num }} to ${{ matrix.num }} + 99)
         run: |
-          ./util/extract-from-module-range.sh {{ matrix.num }} {{ matrix.num + 99 }}
+          FROM=${{ matrix.num }}
+          TO=$((FROM+99))
+          ./util/extract-from-module-range.sh $FROM $TO
       - name: Compress data 
         run: | 
-          zip -r extracted_data_{{ matrix.num }}.zip data/extracted.+source.+n.+b
+          zip -r extracted_data_${{ matrix.num }}.zip data/extracted.+source.+n.+b
       - name: Upload artifact 
         uses: actions/upload-artifact@v3
         with:
-          name: extracted_data_{{ matrix.num }}
-          path: extracted_data_{{ matrix.num }}.zip
+          name: extracted_data_${{ matrix.num }}
+          path: extracted_data_${{ matrix.num }}.zip
           retention-days: 1
 
   # Step 3: combine the extracted data.
