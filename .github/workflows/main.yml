@@ -27,6 +27,7 @@ jobs:
 
   extract_data_1:
     needs: make_all_proof_sources
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/build
