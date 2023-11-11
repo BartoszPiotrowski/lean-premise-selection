@@ -8,11 +8,10 @@ on:
     branches: ["main"]
 
 jobs:
-  # Build lean-premise-selection, make proof sources and upload artifact.
   make_all_proof_sources:
     runs-on: ubuntu-latest
     steps:
-      - uses: 
+      - uses: actions/lean-premise-selection@v1 # see build.yml
       - name: Run proof sources script
         run: |
           ./util/make-all-proof-sources.sh
