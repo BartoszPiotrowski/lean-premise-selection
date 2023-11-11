@@ -1,5 +1,5 @@
 name: 'Build lean-premise-selection'
-job:
+runs:
   using: "composite"
   steps:
     - name: Install elan
