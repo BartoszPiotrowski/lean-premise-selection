@@ -11,35 +11,58 @@ jobs:
   make_all_proof_sources:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/lean-premise-selection@v1 # see build.yml
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/build
       - name: Run proof sources script
         run: |
           ./util/make-all-proof-sources.sh
       - name: Compress proof sources 
         run: |
-          zip -r data/proof_sources.zip data/proof_sources
+          zip -r proof_sources.zip data/proof_sources
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
           name: proof_sources 
-          path: data/proof_sources.zip
+          path: proof_sources.zip
 
-  # extract_all_data:
+  extract_data_1:
+    needs: make_all_proof_sources
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/build
+      - uses: actions/download-artifact@v3
+        with:
+          name: proof_sources
+      - name: Unzip proof sources 
+        run: |
+          unzip proof_sources.zip
+      - name: Extract data from modules 0-999
+        run: |
+          ./util/extract-from-modules-range.sh 0 999
+  
+  # extract_data_2:
   #   needs: make_all_proof_sources
   #   steps:
-  #     - name: Install elan
+  #     - uses: actions/checkout@v3
+  #     - uses: ./.github/actions/build
+  #     - name: Extract data from modules 1000-1999
   #       run: |
-  #         set -o pipefail
-  #         curl -sSfL https://github.com/leanprover/elan/releases/download/v3.0.0/elan-x86_64-unknown-linux-gnu.tar.gz | tar xz
-  #         ./elan-init -y --default-toolchain leanprover/lean4:v4.3.0-rc1
-  #         echo "$HOME/.elan/bin" >> $GITHUB_PATH
-  #     - name: Checkout
-  #       uses: actions/checkout@v3
-  #     - name: Build lean-premise-selection
+  #         ./util/extract-from-modules-range.sh 1000 1999
+  
+  # extract_data_3:
+  #   needs: make_all_proof_sources
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: ./.github/actions/build
+  #     - name: Extract data from modules 2000-2999
   #       run: |
-  #         lake update
-  #         lake exe cache get
-  #         lake build
-  #     - name: Run extractor
-  #       run:
-  #         ./util/extract-from-all-modules.sh
+  #         ./util/extract-from-modules-range.sh 2000 2999
+  
+  # extract_data_4:
+  #   needs: make_all_proof_sources
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: ./.github/actions/build
+  #     - name: Extract data from modules 3000-3999
+  #       run: |
+  #         ./util/extract-from-modules-range.sh 3000 3999
