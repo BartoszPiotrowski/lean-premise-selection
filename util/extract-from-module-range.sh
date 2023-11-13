@@ -23,10 +23,10 @@ while read f; do
 
         if [ ${#MODULES_TO_PROCESS[@]} -eq 4 ]; then
             (
-                $SCRIPT_DIR/extract-from-module.sh "${MODULES_TO_PROCESS[0]}" $OUT_DIR $PARAMS &
-                $SCRIPT_DIR/extract-from-module.sh "${MODULES_TO_PROCESS[1]}" $OUT_DIR $PARAMS &
-                $SCRIPT_DIR/extract-from-module.sh "${MODULES_TO_PROCESS[2]}" $OUT_DIR $PARAMS &
-                $SCRIPT_DIR/extract-from-module.sh "${MODULES_TO_PROCESS[3]}" $OUT_DIR $PARAMS &
+                timeout 3m $SCRIPT_DIR/extract-from-module.sh "${MODULES_TO_PROCESS[0]}" $OUT_DIR $PARAMS &
+                timeout 3m $SCRIPT_DIR/extract-from-module.sh "${MODULES_TO_PROCESS[1]}" $OUT_DIR $PARAMS &
+                timeout 3m $SCRIPT_DIR/extract-from-module.sh "${MODULES_TO_PROCESS[2]}" $OUT_DIR $PARAMS &
+                timeout 3m $SCRIPT_DIR/extract-from-module.sh "${MODULES_TO_PROCESS[3]}" $OUT_DIR $PARAMS &
                 wait
             )
             MODULES_TO_PROCESS=()
