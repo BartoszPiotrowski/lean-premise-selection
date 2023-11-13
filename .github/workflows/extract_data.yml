@@ -34,6 +34,7 @@ jobs:
     # needs: make_all_proof_sources
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix: 
         num: [
              0,  100,  200,  300,  400,  500,  600,  700,  800,  900, 
@@ -50,6 +51,7 @@ jobs:
       #   run: |
       #     unzip proof_sources.zip
       - name: Extract data from modules (${{ matrix.num }} to ${{ matrix.num }} + 99)
+        continue-on-error: true
         run: |
           FROM=${{ matrix.num }}
           TO=$((FROM+99))
