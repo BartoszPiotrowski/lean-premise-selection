@@ -14,6 +14,8 @@ fi
 MODULES_TO_PROCESS=()
 I=0
 
+echo "Extracting from modules $FROM to $TO"
+
 # NOTE: parameters are fixed to `+source +n +b` here.
 while read f; do
     if [ $I -ge $FROM ] && [ $I -le $TO ]; then
