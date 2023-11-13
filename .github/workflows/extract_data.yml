@@ -2,7 +2,7 @@ name: Extract data
 
 on:
   push:
-    branches: ["mathlib4"]
+    branches: ["extract"]
   
   pull_request:
     branches: ["main"] 
