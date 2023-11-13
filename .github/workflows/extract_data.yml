@@ -11,27 +11,27 @@ jobs:
   
   # Step 1: generate proof sources.
   
-  make_all_proof_sources:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: ./.github/actions/build
-      - name: Run proof sources script
-        run: |
-          ./util/make-all-proof-sources.sh
-      - name: Compress proof sources 
-        run: |
-          zip -r proof_sources.zip data/proof_sources
-      - name: Upload artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: proof_sources 
-          path: proof_sources.zip
+  # make_all_proof_sources:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: ./.github/actions/build
+  #     - name: Run proof sources script
+  #       run: |
+  #         ./util/make-all-proof-sources.sh
+  #     - name: Compress proof sources 
+  #       run: |
+  #         zip -r proof_sources.zip data/proof_sources
+  #     - name: Upload artifact
+  #       uses: actions/upload-artifact@v3
+  #       with:
+  #         name: proof_sources 
+  #         path: proof_sources.zip
 
   # Step 2: extract data from mathlib (split into parallel jobs).
 
   extract_data:
-    needs: make_all_proof_sources
+    # needs: make_all_proof_sources
     runs-on: ubuntu-latest
     strategy:
       matrix: 
@@ -43,12 +43,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/build
-      - uses: actions/download-artifact@v3
-        with:
-          name: proof_sources
-      - name: Unzip proof sources 
-        run: |
-          unzip proof_sources.zip
+      # - uses: actions/download-artifact@v3
+      #   with:
+      #     name: proof_sources
+      # - name: Unzip proof sources 
+      #   run: |
+      #     unzip proof_sources.zip
       - name: Extract data from modules (${{ matrix.num }} to ${{ matrix.num }} + 99)
         run: |
           FROM=${{ matrix.num }}
@@ -74,7 +74,7 @@ jobs:
       - name: Package data 
         run: |
           for ((i=0;i<=3600;i+=100)); do
-            unzip extracted_data_$i.zip
+            unzip extracted_data_$i
           done;
           zip -r extracted_data.zip data/extracted.+source.+n.+b
       - name: Upload artifact 
