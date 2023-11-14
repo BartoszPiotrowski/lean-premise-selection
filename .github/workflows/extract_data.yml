@@ -53,10 +53,20 @@ jobs:
           ls -la
 
           for ((i=1700;i<=1800;i+=100)); do
-              ls extracted_data_$i
+            mv "extracted_data_$i/extracted_data_$i.zip" .
+            rm -rf "extracted_data_$i"
+            unzip -o extracted_data_$i -d .
           done;
 
+          echo "Unzipping complete."
+
+          ls -la
+
           EXTRACTED_PATH="data/extracted.+source.+n.+b"
+
+          if [ -d "$EXTRACTED_PATH" ]; then
+            echo "Data extraction directory exists."
+          fi
 
           for extracted_labels in "$EXTRACTED_PATH"/*.labels; do
               extracted_no_ext="$EXTRACTED_PATH/$(basename $extracted_labels .labels)"
