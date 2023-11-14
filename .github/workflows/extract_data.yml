@@ -16,11 +16,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix: 
-        num: [
-             0,  100,  200,  300,  400,  500,  600,  700,  800,  900, 
-          1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 
-          2000, 2100, 2200, 2300, 2400, 2500, 2600, 2700, 2800, 2900, 
-          3000, 3100, 3200, 3300, 3400, 3500, 3600]
+        num: [1700, 1800]
+          #    0,  100,  200,  300,  400,  500,  600,  700,  800,  900, 
+          # 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 
+          # 2000, 2100, 2200, 2300, 2400, 2500, 2600, 2700, 2800, 2900, 
+          # 3000, 3100, 3200, 3300, 3400, 3500, 3600]
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/build
@@ -28,7 +28,7 @@ jobs:
         continue-on-error: true
         run: |
           FROM=${{ matrix.num }}
-          TO=$((FROM+99))
+          TO=$((FROM+10))
           ./util/extract-from-module-range.sh $FROM $TO
       - name: Compress data 
         run: | 
@@ -50,7 +50,7 @@ jobs:
       - uses: actions/download-artifact@v3
       - name: Package data 
         run: |
-          for ((i=0;i<=3600;i+=100)); do
+          for ((i=1700;i<=1800;i+=100)); do
             mv "extracted_data_$i/extracted_data_$i.zip" .
             rm -rf "extracted_data_$i"
             unzip -o extracted_data_$i -d .
