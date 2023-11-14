@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: 
-        num: [1700]
+        num: [1700, 1800]
           #    0,  100,  200,  300,  400,  500,  600,  700,  800,  900, 
           # 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 
           # 2000, 2100, 2200, 2300, 2400, 2500, 2600, 2700, 2800, 2900, 
@@ -49,7 +49,7 @@ jobs:
       - uses: actions/download-artifact@v3
       - name: Package data 
         run: |
-          for ((i=0;i<=3600;i+=100)); do
+          for ((i=1700;i<=1800;i+=100)); do
               unzip -o extracted_data_$i -d .
           done;
 
