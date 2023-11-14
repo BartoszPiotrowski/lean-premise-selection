@@ -53,7 +53,7 @@ jobs:
           ls -la
 
           for ((i=1700;i<=1800;i+=100)); do
-              unzip -o extracted_data_$i -d .
+              ls extracted_data_$i
           done;
 
           EXTRACTED_PATH="data/extracted.+source.+n.+b"
