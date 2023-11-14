@@ -50,8 +50,6 @@ jobs:
       - uses: actions/download-artifact@v3
       - name: Package data 
         run: |
-          ls -la
-
           for ((i=1700;i<=1800;i+=100)); do
             mv "extracted_data_$i/extracted_data_$i.zip" .
             rm -rf "extracted_data_$i"
@@ -59,8 +57,6 @@ jobs:
           done;
 
           echo "Unzipping complete."
-
-          ls -la
 
           EXTRACTED_PATH="data/extracted.+source.+n.+b"
 
@@ -100,6 +96,8 @@ jobs:
           done;
 
           rm -rf "$EXTRACTED_PATH"
+          rm data/forest.source.nb.small
+          rm data/math_names
 
           zip -r extracted_data.zip data
       - name: Upload artifact 
