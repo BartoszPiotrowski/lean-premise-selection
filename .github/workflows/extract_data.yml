@@ -46,9 +46,12 @@ jobs:
     needs: extract_data
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - uses: actions/download-artifact@v3
       - name: Package data 
         run: |
+          ls -la
+
           for ((i=1700;i<=1800;i+=100)); do
               unzip -o extracted_data_$i -d .
           done;
