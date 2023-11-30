@@ -1,5 +1,5 @@
 import Lean
-import Mathlib.Control.Writer
+import Mathlib.Control.Monad.Writer
 import PremiseSelection.StatementFeatures
 import PremiseSelection.ProofSource
 
@@ -26,7 +26,7 @@ instance : ToJson TheoremPremises where
 instance : ToString TheoremPremises where
   toString := Json.pretty ∘ toJson
 
-/-- Used to choose the feature format: nameCounts and/or bigramCounts and/or 
+/-- Used to choose the feature format: nameCounts and/or bigramCounts and/or
 trigramCounts -/
 structure FeatureFormat where
   n : Bool := true
@@ -54,13 +54,13 @@ def getFeatures (tp : TheoremPremises) (format : FeatureFormat) : String :=
     let argsF := tp.argumentsFeatures
     let mut result : Array String := #[]
     if format.n then
-      result := result ++ statementF.nameCounts.toTFeatures ++ 
+      result := result ++ statementF.nameCounts.toTFeatures ++
         argsF.concatMap (Multiset.toHFeatures ∘ StatementFeatures.nameCounts)
     if format.b then
-      result := result ++ statementF.bigramCounts.toTFeatures ++ 
+      result := result ++ statementF.bigramCounts.toTFeatures ++
         argsF.concatMap (Multiset.toHFeatures ∘ StatementFeatures.bigramCounts)
     if format.t then
-      result := result ++ statementF.trigramCounts.toTFeatures ++ 
+      result := result ++ statementF.trigramCounts.toTFeatures ++
         argsF.concatMap (Multiset.toHFeatures ∘ StatementFeatures.trigramCounts)
     return " ".intercalate result.data
 
@@ -160,23 +160,7 @@ private def extractPremisesFromModule
   -- Source filter.
   if source then
     if let some modulePath ← proofSourcePath moduleName then
-      -- Avoid very large files. In particular mathbin files over 2MB.
-      let mut fileSize := 0
-      let pathFromImport :=
-        if moduleName.getRoot == `Mathbin then
-          pathFromMathbinImport
-        else pathFromMathlibImport
-      if let some synportPath ← pathFromImport moduleName then
-        let mdata ← System.FilePath.metadata synportPath
-        fileSize := mdata.byteSize
-      if fileSize == 0 then
-        dbg_trace s! "Aborted {moduleName}, ported file not found"
-        return ()
-      if fileSize > 2 * 1024 * 1024 then
-        dbg_trace s! "Aborted {moduleName}, size {fileSize}"
-        return ()
-
-      -- If source premises and path found, then create a filter looking at 
+      -- If source premises and path found, then create a filter looking at
       -- proof source. If no proof source is found, no filter is applied.
       let data ← IO.FS.readFile modulePath
       let proofsJson :=
@@ -189,12 +173,12 @@ private def extractPremisesFromModule
         else return (premises, false)
   -- Math-only filter.
   else if math then
-    let allNamesPath := "data/all_names"
+    let allNamesPath := "data/math_names"
     filter := fun _ premises => do
       let mut filteredPremises : Multiset Name := ∅
       for (premise, count) in premises do
-        let output ← IO.Process.output { 
-          cmd := "grep", 
+        let output ← IO.Process.output {
+          cmd := "grep",
           args := #["-x", premise.toString, allNamesPath] }
         if output.exitCode == 0 && !output.stdout.isEmpty then
           filteredPremises := filteredPremises.insert premise count
@@ -228,17 +212,17 @@ private def extractPremisesFromModule
     dbg_trace s!"Total : {countTotal}"
     dbg_trace s!"Found in source : {countFound}"
     dbg_trace s!"Found and not empty : {countFoundAndNotEmpty}"
-  else 
+  else
     dbg_trace s!"Total : {countTotal}"
     dbg_trace s!"Not empty : {countFoundAndNotEmpty}"
   return ()
-  where 
+  where
     blackList : List String := ["._", "_private.", "_Private."]
 
     noAuxFilter (premises : Multiset Name) : MetaM (Multiset Name) := do
       let mut result : Multiset Name := ∅
-      for (p, c) in premises do  
-        if !(blackList.any (·.isSubstrOf p.toString)) then 
+      for (p, c) in premises do
+        if !(blackList.any (·.isSubstrOf p.toString)) then
           result := result.insert p c
       return result
 
@@ -248,29 +232,35 @@ def extractPremisesFromModuleToFiles
   (moduleName : Name) (moduleData : ModuleData)
   (labelsPath featuresPath : FilePath) (userOptions : UserOptions := default)
   : MetaM Unit := do
-  let labelsHandle ← Handle.mk labelsPath Mode.append false
-  let featuresHandle ← Handle.mk featuresPath Mode.append false
+  let labelsExists ← labelsPath.pathExists
+  let featuresExists ← featuresPath.pathExists
+  if labelsExists && featuresExists then
+    dbg_trace s!"{labelsPath} and {featuresPath} already exist."
+    pure ()
+  else
+    let labelsHandle ← Handle.mk labelsPath Mode.append
+    let featuresHandle ← Handle.mk featuresPath Mode.append
 
-  let insert : TheoremPremises → IO Unit := fun data => do
-    labelsHandle.putStrLn (getLabels data)
-    featuresHandle.putStrLn (getFeatures data userOptions.format)
+    let insert : TheoremPremises → IO Unit := fun data => do
+      labelsHandle.putStrLn (getLabels data)
+      featuresHandle.putStrLn (getFeatures data userOptions.format)
 
-  let minDepth := userOptions.minDepth
-  let maxDepth := userOptions.maxDepth
-  let noAux := userOptions.noAux
-  let source := userOptions.source
-  let math := userOptions.math
-  extractPremisesFromModule 
-    insert moduleName moduleData minDepth maxDepth noAux source math
+    let minDepth := userOptions.minDepth
+    let maxDepth := userOptions.maxDepth
+    let noAux := userOptions.noAux
+    let source := userOptions.source
+    let math := userOptions.math
+    extractPremisesFromModule
+      insert moduleName moduleData minDepth maxDepth noAux source math
 
 /-- Go through the whole module and find the defininions that appear in the
-corresponding source file. This was used to generate `all_names`. -/
+corresponding source file. This was used to generate `math_names`. -/
 def extractUserDefinitionsFromModuleToFile
   (moduleName : Name) (moduleData : ModuleData) (outputPath : FilePath)
   : MetaM Unit := do
-  let labelsHandle ← Handle.mk outputPath Mode.append false
+  let labelsHandle ← Handle.mk outputPath Mode.append
   for cinfo in moduleData.constants do
-    if let some modulePath ← pathFromMathbinImport moduleName then
+    if let some modulePath ← pathFromMathlibImport moduleName then
       let args := #[cinfo.name.toString, modulePath.toString]
       let output ← IO.Process.output { cmd := "grep", args := args }
       if output.exitCode == 0 && !output.stdout.isEmpty then
@@ -281,11 +271,6 @@ def extractUserDefinitionsFromModuleToFile
 def extractPremisesFromImportsToFiles
   (labelsPath featuresPath : FilePath) (userOptions : UserOptions := default)
   : MetaM Unit := do
-  dbg_trace s!"Clearing {labelsPath} and {featuresPath}."
-
-  IO.FS.writeFile labelsPath ""
-  IO.FS.writeFile featuresPath ""
-
   dbg_trace s!"Extracting premises from imports to {labelsPath}, {featuresPath}."
 
   let env ← getEnv
@@ -295,8 +280,7 @@ def extractPremisesFromImportsToFiles
 
   let mut count := 0
   for (moduleName, moduleData) in Array.zip moduleNamesArray moduleDataArray do
-    let isMathImport :=
-      moduleName.getRoot == `Mathbin || moduleName.getRoot == `Mathlib
+    let isMathImport := moduleName.getRoot == `Mathlib
     if imports.contains moduleName && isMathImport then
       count := count + 1
       extractPremisesFromModuleToFiles

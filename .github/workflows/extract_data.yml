@@ -1,0 +1,107 @@
+name: Extract data
+
+on:
+  push:
+    branches: ["extract"]
+  
+  pull_request:
+    branches: ["main"] 
+
+jobs:
+  
+  # Step 1: extract data from mathlib (split into parallel jobs).
+
+  extract_data:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: 
+        num: [
+             0,  100,  200,  300,  400,  500,  600,  700,  800,  900, 
+          1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 
+          2000, 2100, 2200, 2300, 2400, 2500, 2600, 2700, 2800, 2900, 
+          3000, 3100, 3200, 3300, 3400, 3500, 3600]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/build
+      - name: Extract data from modules (${{ matrix.num }} to ${{ matrix.num }} + 99)
+        continue-on-error: true
+        run: |
+          FROM=${{ matrix.num }}
+          TO=$((FROM+99))
+          ./util/extract-from-module-range.sh $FROM $TO
+      - name: Compress data 
+        run: | 
+          zip -r extracted_data_${{ matrix.num }}.zip data/extracted.+source.+n.+b
+      - name: Upload artifact 
+        uses: actions/upload-artifact@v3
+        with:
+          name: extracted_data_${{ matrix.num }}
+          path: extracted_data_${{ matrix.num }}.zip
+          retention-days: 1
+
+  # Step 2: combine the extracted data.
+
+  combine_data:
+    needs: extract_data
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/download-artifact@v3
+      - name: Package data 
+        run: |
+          for ((i=0;i<=3600;i+=100)); do
+            mv "extracted_data_$i/extracted_data_$i.zip" .
+            rm -rf "extracted_data_$i"
+            unzip -o extracted_data_$i -d .
+          done;
+
+          echo "Unzipping complete."
+
+          EXTRACTED_PATH="data/extracted.+source.+n.+b"
+
+          if [ -d "$EXTRACTED_PATH" ]; then
+            echo "Data extraction directory exists."
+          fi
+
+          for extracted_labels in "$EXTRACTED_PATH"/*.labels; do
+              extracted_no_ext="$EXTRACTED_PATH/$(basename $extracted_labels .labels)"
+              extracted_features="$extracted_no_ext.features"
+              LABELS_LENGTH=$(cat "$extracted_labels" | wc -l)
+              FEATURES_LENGTH=$(cat "$extracted_features" | wc -l)
+              if [ $LABELS_LENGTH -eq $FEATURES_LENGTH ]; then
+                  continue
+              fi
+              LENGTH=$(($LABELS_LENGTH < $FEATURES_LENGTH ? $LABELS_LENGTH : $FEATURES_LENGTH))
+              if [ $LENGTH -eq 0 ]; then
+                  echo "Removing $extracted_no_ext"
+                  rm "$extracted_labels" "$extracted_features"
+                  continue
+              fi
+              echo "Truncating $extracted_no_ext"
+              head -n "$LENGTH" "$extracted_labels" > "$extracted_labels.tmp" 
+              mv "$extracted_labels.tmp" "$extracted_labels"
+              head -n "$LENGTH" "$extracted_features" > "$extracted_features.tmp"
+              mv "$extracted_features.tmp" "$extracted_features"
+          done;
+
+          LABELS_OUTPUT="$EXTRACTED_PATH.labels"
+          FEATURES_OUTPUT="$EXTRACTED_PATH.features"
+
+          for extracted_labels in "$EXTRACTED_PATH"/*.labels; do
+              extracted_no_ext="$EXTRACTED_PATH/$(basename $extracted_labels .labels)"
+              extracted_features="$extracted_no_ext.features"
+              cat "$extracted_labels" >> "$LABELS_OUTPUT"
+              cat "$extracted_features" >> "$FEATURES_OUTPUT"
+          done;
+
+          rm -rf "$EXTRACTED_PATH"
+          rm data/forest.source.nb.small
+          rm data/math_names
+
+          zip -r extracted_data.zip data
+      - name: Upload artifact 
+        uses: actions/upload-artifact@v3
+        with:
+          name: extracted_data
+          path: extracted_data.zip

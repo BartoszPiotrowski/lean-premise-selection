@@ -5,13 +5,13 @@ open Lean Lean.Meta PremiseSelection
 /-- Run this file to extract premises as follows:
 
   `lean --run PremiseSelection/ExtractorRunner.lean
-    data/test.labels data/test.features data/modules 
+    data/test.labels data/test.features data/modules
     [min-depth=x] [max-depth=y] [+all] [+source] [+math] [+n] [+b] [+t]`
 
 The first argument is the path to the labels file, the second argument is the
 path to the features file, the third argument is the path to the modules file (a
 file consisting of a list of module names, one per line). Adding the options
-`+all`, `+source` or `+math` will apply the respecive filters. Options `+n`, 
+`+all`, `+source` or `+math` will apply the respecive filters. Options `+n`,
 `+b`, and `+t` will change the format of the features.
 
 This is quite a heavy task so you might need to increase memory and time out,
@@ -53,10 +53,10 @@ unsafe def main (args : List String) : IO Unit := do
 
   -- Add `+source` to the command to apply the source filter.
   let source := (args.drop 3).contains "+source"
-  
+
   -- Add `+math` to the command to apply the math filter.
   let math := (args.drop 3).contains "+math"
-    
+
   if source && math then
     panic "Cannot use both user and math filters."
 
@@ -82,7 +82,7 @@ unsafe def main (args : List String) : IO Unit := do
       let moduleName := decopmosedNameStr.foldl Name.append Lean.Name.anonymous
       moduleNames := moduleNames.push moduleName
 
-  withImportModules (moduleNames.data.map ({ module := · })) {} 0 fun env => do
+  withImportModules (moduleNames.map ({ module := · })) {} 0 fun env => do
     let m := extractPremisesFromImportsToFiles labelsPath featuresPath options
     let ctx : Core.Context := {
       fileName      := "",

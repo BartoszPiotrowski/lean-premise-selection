@@ -7,7 +7,7 @@ namespace PremiseSelection
 
 open Lean Meta Elab Tactic Term
 
-def trainedForest := loadFromFile "data/forest.n+b.user.user-filter.mathlib4"
+def trainedForest := loadFromFile "data/forest.source.nb.small"
 
 syntax (name := suggestPremises) "suggest_premises" : tactic
 

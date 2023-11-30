@@ -1,5 +1,5 @@
 import Lean
-import Mathlib.Control.Writer
+import Mathlib.Control.Monad.Writer
 import PremiseSelection.Utils
 open Lean
 /-!
@@ -12,12 +12,12 @@ Ouput: the theorem statement as an expr
  -/
 open Std
 
-def Std.RBMap.modify' (k : κ) (fn : Option α → Option α) (r : RBMap κ α cmp) :=
+def Std.RBMap.modify' [Ord κ] (k : κ) (fn : Option α → Option α) (r : Std.RBMap κ α compare) :=
   match fn <| r.find? k with
   | none => r.erase k
   | some v => r.insert k v
 
-def Std.RBMap.mergeBy (fn : κ → α → α → α) (r1 r2 : RBMap κ α cmp) :  RBMap κ α cmp :=
+def Std.RBMap.mergeBy [Ord κ] (fn : κ → α → α → α) (r1 r2 : Std.RBMap κ α compare) : Std.RBMap κ α compare :=
   r2.foldl (fun r1 k v2 => r1.modify' k (fun | none => some v2 | some v1 => some (fn k v1 v2))) r1
 
 namespace PremiseSelection
@@ -109,7 +109,7 @@ def StatementFeatures.mkBigram : Name → Name → StatementFeatures
 def StatementFeatures.mkTrigram : Name → Name → Name → StatementFeatures
   | n1, n2, n3 => {trigramCounts := Multiset.singleton ⟨n1, n2, n3⟩}
 
-def StatementFeatures.toHFeatures (f : StatementFeatures) : Array String := 
+def StatementFeatures.toHFeatures (f : StatementFeatures) : Array String :=
   f.nameCounts.toHFeatures ++
   f.bigramCounts.toHFeatures ++
   f.trigramCounts.toHFeatures
@@ -160,7 +160,7 @@ def getStatementFeatures (e : Expr) : MetaM StatementFeatures := do
 
 open Lean.Meta
 
-def getArgsFeatures (args : List Expr) : MetaM (Array StatementFeatures) := do 
+def getArgsFeatures (args : List Expr) : MetaM (Array StatementFeatures) := do
   let mut argsFeats := #[]
   for arg in args do
     let argType ← inferType arg
@@ -170,7 +170,7 @@ def getArgsFeatures (args : List Expr) : MetaM (Array StatementFeatures) := do
         argsFeats := argsFeats ++ #[argFeats]
   return argsFeats
 
-def getThmAndArgsFeatures (e : Expr) 
+def getThmAndArgsFeatures (e : Expr)
   : MetaM (StatementFeatures × Array StatementFeatures) := do
   forallTelescope e <| fun args thm => do
       let thmFeats ← getStatementFeatures thm
