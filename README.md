@@ -23,7 +23,14 @@ The paper describing the design of the tool and its evaluation was accepted to T
 
 # Getting started
 
-Make sure that `elan` is installed and up to date. Build the project by running:
+Make sure that `elan` is installed and up to date.
+
+Download cached olean's for mathlib:
+```
+lake exe cache get
+```
+
+Build the project by running:
 ```
 lake build
 ```
