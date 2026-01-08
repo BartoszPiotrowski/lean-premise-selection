@@ -1,7 +1,7 @@
 /build
-/lake-packages
+.lake
+lake-manifest.json
 /tmp
-/widget/package-lock.json.trace
 /data/*
 !/data/all_imports
 !/data/all_names
