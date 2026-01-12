@@ -8,7 +8,7 @@ open Std
 def similarity (fCounts : HashMap String Int) (nTheorems : Nat) (f1 f2 : Features) : Float :=
   let fI := HashSet.intersection f1 f2
   let trans l n := (Float.log (Float.ofInt l / Float.ofInt n)) ^ 2
-  let count f := if fCounts.contains f then fCounts.find! f else 1
+  let count f := if fCounts.contains f then fCounts[f]! else 1
   let countTrans f := trans nTheorems (count f)
   let sum l := List.foldl (fun acc x => acc + x) 0 l
   let f1 := f1.toList.map countTrans
@@ -25,9 +25,9 @@ def predictOne (data : List Example) (nNeighbours : Nat) (f : Features) : List S
   let simils := simils.sort (fun (x, _) (y, _) => x > y)
   let simils := simils.initSeg nNeighbours
   let add s (tbl : HashMap String Float) p :=
-    if tbl.contains p then tbl.insert p (tbl.find! p + s) else tbl.insert p s
+    if tbl.contains p then tbl.insert p (tbl[p]! + s) else tbl.insert p s
   let addMany tbl sPs := let (s, ps) := sPs; ps.foldl (add s) tbl
-  let premisesScores := simils.foldl addMany HashMap.empty
+  let premisesScores := simils.foldl addMany {}
   let ranking := premisesScores.toList.sort (fun (_, x) (_, y) => x > y)
   ranking.map (fun (x, _) => x)
 

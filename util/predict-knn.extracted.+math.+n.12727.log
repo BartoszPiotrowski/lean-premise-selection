@@ -1,0 +1,5 @@
+./util/predict-knn.sh: line 16: ./../lean-premise-selection/build/bin/KnnPredict: No such file or directory
+
+real	0m0.001s
+user	0m0.001s
+sys	0m0.000s

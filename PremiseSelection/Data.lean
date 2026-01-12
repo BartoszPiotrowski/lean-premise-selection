@@ -8,9 +8,9 @@ def Label := List String
 
 def Features := HashSet String
 
-structure Example := (features : Features) (label : Label)
+structure Example where (features : Features) (label : Label)
 
-instance : Inhabited Example := { default := ⟨HashSet.empty, []⟩ }
+instance : Inhabited Example := { default := ⟨({} : HashSet String), []⟩ }
 
 def Examples := List Example
 
@@ -85,9 +85,9 @@ variable {α} [BEq α] [Hashable α]
 def giniImpur (l : List α) : Float :=
   let len := l.length
   let update (tbl : Std.HashMap α Int) i :=
-    if tbl.contains i then tbl.insert i (tbl.find! i + 1)
+    if tbl.contains i then tbl.insert i (tbl[i]! + 1)
     else tbl.insert i 1
-  let tbl := List.foldl (fun tbl i => update tbl i) HashMap.empty l
+  let tbl := List.foldl (fun tbl i => update tbl i) {} l
   let update :=
     fun s _ x => s + Float.pow ((Float.ofInt x) / (Float.ofNat len)) 2
   1 - HashMap.fold update 0 tbl

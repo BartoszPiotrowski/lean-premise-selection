@@ -1,0 +1,10 @@
+Loading data...
+Classifying test data...
+Saving predictions...
+Predictions saved at ./util/predict-knn.extracted.+math.+n.17643.preds
+
+real	0m0.702s
+user	0m9.919s
+sys	0m0.178s
+Cover, plus 0: 15.23%
+Cover, plus 10: 26.95%

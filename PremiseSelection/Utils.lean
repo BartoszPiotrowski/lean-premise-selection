@@ -1,5 +1,6 @@
 import Lean
 import Init.Data.Random
+import Std.Data.HashSet
 import Std.Data.HashMap
 
 section List
@@ -31,14 +32,14 @@ def accuracy' [DecidableEq α] (l₁ : List α) (l₂ : List (List α)) : Float 
   (Float.ofNat correct.length) / (Float.ofNat pairs.length)
 
 def arraySubset (x : List α) (inds : List Nat) : Array α :=
-  Array.mk $ inds.map (fun i => x.get! i)
+  Array.mk $ inds.map (fun i => x[i]!)
 
 def sampleWithReplace (l : List α) (n : Nat) : IO (List α) :=
   let a := Array.mk l
   let rec loop i r :=
     match i with
     | 0 => return r
-    | k + 1 => do loop k $ a.get! (← IO.rand 0 (a.size - 1)) :: r
+    | k + 1 => do loop k $ a[(← IO.rand 0 (a.size - 1))]! :: r
   loop n []
 
 def evalList {α} (l : List (IO α)) : IO (List α) := do
@@ -81,13 +82,13 @@ def sample (l : List α) (n : Nat) : IO (List α) :=
     let mut a := Array.mk l
     for i in List.range n do
       let j ← IO.rand 0 (a.size - i - 1)
-      let e := a.get! (i + j)
-      a := a.set! (i + j) (a.get! i)
+      let e := a[(i + j)]!
+      a := a.set! (i + j) (a[i]!)
       a := a.set! i e
-    return (a.extract 0 n).data
+    return (a.extract 0 n).toList
 
 def chooseRandom (l : List α) : IO α := do
-  return l.get! (← IO.rand 0 (l.length - 1))
+  return l[(← IO.rand 0 (l.length - 1))]!
 
 def initSeg {α} (l : List α) n :=
     match l with
@@ -137,19 +138,19 @@ end List
 def readLines (path : String) : IO (List String) := do
   let handle ← IO.FS.Handle.mk path IO.FS.Mode.read
   let content ← handle.readToEnd
-  return content.trim.splitOn "\n"
+  return content.trimAscii.toString.splitOn "\n"
 
 def time (f : α → β) (x : α) : IO β := do
   timeit "Execution time: " (return f x)
 
 def Float.toInt (f : Float) : Int :=
   if f < 0
-  then - (- f).toUInt64.val
-  else f.toUInt64.val
+  then - (- f).toUInt64.toNat
+  else f.toUInt64.toNat
 
 def floatOfString (s : String) : Float :=
-  let (s, sign) := if s.get 0 = '-'
-    then ((s.toSubstring.drop 1).toString, -1)
+  let (s, sign) := if String.Pos.Raw.get s 0 = '-'
+    then ((s.toRawSubstring.drop 1).toString, -1)
     else (s, 1)
   let a := Array.mk (s.splitOn ".")
   let (S, s) := (a[0]!,a[1]!)
@@ -158,26 +159,19 @@ def floatOfString (s : String) : Float :=
   let s := Float.ofInt s.toInt!
   (Float.ofInt sign) * (S + (s / 10 ^ l))
 
-open Lean
+open Std
 
 variable {β : Type} [BEq β] [Hashable β]
 
-def HashSet.ofList (l : List β) :=
-  List.foldl HashSet.insert HashSet.empty l
-
-def HashSet.insertMany (s : HashSet β) (l : List β) :=
-  List.foldl HashSet.insert s l
-
 def HashSet.intersection (s₁ s₂ : HashSet β) : HashSet β :=
-  s₁.fold (fun s x => if s₂.contains x then s.insert x else s) HashSet.empty
+  s₂.filter s₁.contains
 
 def intersection (l₁ l₂ : List β) : List β :=
-  let s₁ := HashSet.ofList l₁
-  let s := l₂.foldl (fun s x => if s₁.contains x then s.insert x else s) HashSet.empty
-  s.toList
+  let s₁ := Std.HashSet.ofList l₁
+  l₂.filter s₁.contains
 
 def union (l : List (List β)) : List β :=
-  (l.foldl HashSet.insertMany HashSet.empty).toList
+  (Std.HashSet.ofList l.flatten).toList
 
 def multiUnion (l : List (List β)) : List β :=
   match l with
@@ -193,17 +187,17 @@ def HashSet.diff (a : HashSet β) (b : HashSet β) : HashSet β :=
 
 def freqs (l : List β) :=
   let update (tbl : Std.HashMap β Int) (i : β) :=
-    if tbl.contains i then tbl.insert i (tbl.find! i + 1)
+    if tbl.contains i then tbl.insert i (tbl[i]! + 1)
     else tbl.insert i 1
-  List.foldl (fun tbl i => update tbl i) Std.HashMap.empty l
+  List.foldl (fun tbl i => update tbl i) {} l
 
 def unionFreqs (l : List (List β)) :=
-  let update (tbl : Std.HashMap β Int) (i : β) :=
-    if tbl.contains i then tbl.insert i (tbl.find! i + 1)
+  let update (tbl : HashMap β Int) (i : β) :=
+    if tbl.contains i then tbl.insert i (tbl[i]! + 1)
     else tbl.insert i 1
-  let updateMany (tbl : Std.HashMap β Int) (l : List β) :=
+  let updateMany (tbl : HashMap β Int) (l : List β) :=
     l.foldl update tbl
-  (l.foldl updateMany Std.HashMap.empty)
+  (l.foldl updateMany {})
 
 def String.joinWith (l : List String) (c : String) : String :=
   match l with

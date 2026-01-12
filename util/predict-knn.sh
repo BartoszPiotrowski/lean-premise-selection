@@ -4,7 +4,7 @@ set -o pipefail
 DIR=`pwd`
 DATA=$1
 RF_DIR=../lean-premise-selection
-KNN_BINARY=$RF_DIR/build/bin/KnnPredict &&
+KNN_BINARY=$RF_DIR/.lake/build/bin/KnnPredict &&
 cd $RF_DIR && lake build && cd $DIR &&
 LOG=${0%.*}.`basename $DATA`.$RANDOM.log &&
 TRAIN=$DATA.train &&

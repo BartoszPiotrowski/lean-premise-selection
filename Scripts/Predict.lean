@@ -3,9 +3,9 @@ import PremiseSelection
 open PremiseSelection
 
 def main (args : List String) : IO Unit := do
-  let forest               := args.get! 0
-  let test_features        := args.get! 1
-  let test_preds_save_path := args.get! 2
+  let forest               := args[0]!
+  let test_features        := args[1]!
+  let test_preds_save_path := args[2]!
   IO.println s!"Loading data..."
   let my_forest ← loadFromFile forest
   IO.println s!"Loading forest..."

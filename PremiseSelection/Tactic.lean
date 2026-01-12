@@ -23,8 +23,8 @@ def getGoalFeatures : TacticM (List String) := do
   let targetFeatures ← getStatementFeatures target
   let hypsFeatures ← getArgsFeatures hyps
 
-  let features := Array.data <| targetFeatures.toTFeatures ++
-    hypsFeatures.concatMap StatementFeatures.toHFeatures
+  let features := Array.toList <| targetFeatures.toTFeatures ++
+    hypsFeatures.flatMap StatementFeatures.toHFeatures
   return features
 
 def blacklist := [
@@ -37,8 +37,5 @@ def blacklist := [
 ]
 
 def scoreThreshold := 1
-
-
-
 
 end PremiseSelection

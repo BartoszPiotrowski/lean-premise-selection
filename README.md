@@ -1,7 +1,5 @@
 # Premise selection for Lean
 
-![Screenshot of premise selection widget.](./screenshot.png)
-
 The aim of this project is to provide a tool for premise selection for Lean
 users.
 
@@ -27,18 +25,6 @@ to ITP 2023 and is available [here](https://bartoszpiotrowski.pl/p/lean-premise-
 Make sure that `elan` is installed an up to date. Build the project by running:
 ```
 lake build
-```
-
-
-# Building the widget
-
-In order to use `suggest_premises` tactic and see the interactive list of
-premises you need to run the following:
-
-```
-cd widget
-npm i
-npm run build -- --tsxName index
 ```
 
 Then using VS Code, head over to `TacticTest.lean` and hover on
@@ -134,10 +120,3 @@ of the data, run the following:
 ```
 The predictions will be saved and compared against the true labels in terms of
 the Cover measure specified in `util/cover.py`.
-
-
-# Development
-
-If you edit the `widget` directory, after running `npm run build -- --tsxName
-index`, you should also delete the `build` directory to force Lean to refresh
-and use the new version.

@@ -1,5 +1,5 @@
+import Mathlib.Control.Monad.Writer
 import Lean
-import Mathlib.Control.Writer
 import PremiseSelection.Utils
 open Lean
 /-!
@@ -10,19 +10,18 @@ Input: the goal state
 Ouput: the theorem statement as an expr
 
  -/
-open Std
 
-def Std.RBMap.modify' [Ord κ] (k : κ) (fn : Option α → Option α) (r : RBMap κ α compare) :=
+def Lean.RBMap.modify [Ord κ] (k : κ) (fn : Option α → Option α) (r : RBMap κ α compare) :=
   match fn <| r.find? k with
   | none => r.erase k
   | some v => r.insert k v
 
-def Std.RBMap.mergeBy [Ord κ] (fn : κ → α → α → α) (r1 r2 : RBMap κ α compare) :  RBMap κ α compare :=
-  r2.foldl (fun r1 k v2 => r1.modify' k (fun | none => some v2 | some v1 => some (fn k v1 v2))) r1
+--def Std.RBMap.mergeBy [Ord κ] (fn : κ → α → α → α) (r1 r2 : RBMap κ α compare) :  RBMap κ α compare :=
+--  Lean.RBMap.fold (fun r1 k v2 => r1.modify k (fun | none => some v2 | some v1 => some (fn k v1 v2))) r1 r2
 
 namespace PremiseSelection
 
-def Multiset (α : Type) [Ord α] := Std.RBMap α Nat compare
+def Multiset (α : Type) [Ord α] := Lean.RBMap α Nat compare
 
 variable {α : Type} [Ord α]
 
@@ -31,10 +30,10 @@ def Multiset.empty : Multiset α := mkRBMap _ _ _
 instance : EmptyCollection  (Multiset α) :=  ⟨Multiset.empty⟩
 
 instance : Append  (Multiset α) where
-  append x y := x.mergeBy (fun _ => (·+·)) y
+  append x y := x.mergeBy (fun _ => (· + ·)) y
 
 def Multiset.add : Multiset α → α → Multiset α
-  | m, a => m.modify' a (fun | none => some 1 | some v => some (v + 1))
+  | m, a => m.modify a (fun | none => some 1 | some v => some (v + 1))
 
 def Multiset.singleton : α → Multiset α
   | a => Multiset.empty |>.add a
@@ -70,11 +69,22 @@ structure StatementFeatures where
   bigramCounts : Multiset Bigram := ∅
   trigramCounts : Multiset Trigram := ∅
 
-instance : ForIn M (Multiset α) (α × Nat) :=
-  show ForIn _ (Std.RBMap _ _ _) _ by infer_instance
+instance [Monad M] : ForIn M (Multiset α) (α × Nat) where
+  forIn ms init f := ForIn.forIn ms.toList init f
+
+-- Add a toList function
+--def Multiset.toList (ms : Multiset α) : List (α × Nat) :=
+--  ms.toList
+
+-- Then define ForIn via the list
+instance [Monad M] : ForIn M (Multiset α) (α × Nat) where
+  forIn ms init f := ForIn.forIn ms.toList init f
 
 def Multiset.toList (m : Multiset α) : List α :=
-  m.foldl (fun l x _ => x :: l) []
+  m.fold (fun l x _ => x :: l) []
+
+--instance : ForIn M (Multiset α) (α × Nat) :=
+--  show ForIn _ (Lean.RBMap _ _ _) _ by infer_instance
 
 def Multiset.toHFeatures [ToString α] (m : Multiset α) : Array String :=
   Array.mk <| m.toList.map (s!"H:{·}")
@@ -109,7 +119,7 @@ def StatementFeatures.mkBigram : Name → Name → StatementFeatures
 def StatementFeatures.mkTrigram : Name → Name → Name → StatementFeatures
   | n1, n2, n3 => {trigramCounts := Multiset.singleton ⟨n1, n2, n3⟩}
 
-def StatementFeatures.toHFeatures (f : StatementFeatures) : Array String := 
+def StatementFeatures.toHFeatures (f : StatementFeatures) : Array String :=
   f.nameCounts.toHFeatures ++
   f.bigramCounts.toHFeatures ++
   f.trigramCounts.toHFeatures
@@ -122,8 +132,8 @@ def StatementFeatures.toTFeatures (f : StatementFeatures) : Array String :=
 def immediateName (e : Expr) : Option Name :=
   if let .const n _ := e then
     some n
-  else if let some n := e.natLit? then
-    some <| toString n
+  else if let some n := e.rawNatLit? then
+    some <| (toString n).toName
   else
     none
 
@@ -160,7 +170,7 @@ def getStatementFeatures (e : Expr) : MetaM StatementFeatures := do
 
 open Lean.Meta
 
-def getArgsFeatures (args : List Expr) : MetaM (Array StatementFeatures) := do 
+def getArgsFeatures (args : List Expr) : MetaM (Array StatementFeatures) := do
   let mut argsFeats := #[]
   for arg in args do
     let argType ← inferType arg
@@ -170,11 +180,11 @@ def getArgsFeatures (args : List Expr) : MetaM (Array StatementFeatures) := do
         argsFeats := argsFeats ++ #[argFeats]
   return argsFeats
 
-def getThmAndArgsFeatures (e : Expr) 
+def getThmAndArgsFeatures (e : Expr)
   : MetaM (StatementFeatures × Array StatementFeatures) := do
   forallTelescope e <| fun args thm => do
       let thmFeats ← getStatementFeatures thm
-      let argsFeats ← getArgsFeatures args.data
+      let argsFeats ← getArgsFeatures args.toList
       return (thmFeats, argsFeats)
 
 end PremiseSelection

@@ -1,5 +1,5 @@
 import Lean
-import Mathlib.Control.Writer
+import Mathlib.Control.Monad.Writer
 import PremiseSelection.StatementFeatures
 import PremiseSelection.ProofSource
 
@@ -55,14 +55,14 @@ def getFeatures (tp : TheoremPremises) (format : FeatureFormat) : String :=
     let mut result : Array String := #[]
     if format.n then
       result := result ++ statementF.nameCounts.toTFeatures ++
-        argsF.concatMap (Multiset.toHFeatures ∘ StatementFeatures.nameCounts)
+        argsF.flatMap (Multiset.toHFeatures ∘ StatementFeatures.nameCounts)
     if format.b then
       result := result ++ statementF.bigramCounts.toTFeatures ++
-        argsF.concatMap (Multiset.toHFeatures ∘ StatementFeatures.bigramCounts)
+        argsF.flatMap (Multiset.toHFeatures ∘ StatementFeatures.bigramCounts)
     if format.t then
       result := result ++ statementF.trigramCounts.toTFeatures ++
-        argsF.concatMap (Multiset.toHFeatures ∘ StatementFeatures.trigramCounts)
-    return " ".intercalate result.data
+        argsF.flatMap (Multiset.toHFeatures ∘ StatementFeatures.trigramCounts)
+    return " ".intercalate result.toList
 
 /-- Premises are simply concatenated. -/
 def getLabels (tp : TheoremPremises) : String :=
@@ -328,8 +328,10 @@ elab "extract_premises_from_thm " id:term : command =>
 elab "extract_premises_from_ctx" : command =>
   runAndPrint <| extractPremisesFromCtx
 
+--syntax (name := extract_premises_to_files)
+--  "extract_premises_to_files l:" str " f:" str : command
 syntax (name := extract_premises_to_files)
-  "extract_premises_to_files l:" str " f:" str : command
+  "extract_premises_to_files" "l" ":" str "f" ":" str : command
 
 @[command_elab «extract_premises_to_files»]
 unsafe def elabExtractPremisesToFiles : CommandElab
